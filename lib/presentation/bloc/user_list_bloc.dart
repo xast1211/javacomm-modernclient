@@ -65,6 +65,9 @@ class UserListBloc extends Bloc<UserListEvent, UserListState> {
     if (cached.isNotEmpty) {
        GlobalDebug.add('Bloc: Loaded ${cached.length} cached users');
        emit(UserListLoaded(cached));
+    } else {
+       // Start with empty list so we see "No Users" while waiting for update
+       emit(const UserListLoaded([]));
     }
     
     chatRepository.requestOnlineUsers();

@@ -36,9 +36,9 @@ class HomePage extends StatelessWidget {
         }
       },
       child: Scaffold(
-        appBar: const JChatAppBar(
-          title: 'Online Users',
-          showRefresh: true,
+        appBar: JChatAppBar(
+          title: AppLocalizations.of(context)!.onlineUsersTitle,
+          showRefresh: false,
         ),
         body: BlocBuilder<UserListBloc, UserListState>(
           builder: (context, state) {
@@ -47,17 +47,17 @@ class HomePage extends StatelessWidget {
                  Expanded(
                    child: _buildList(state, context),
                  ),
-                 Container(
-                   height: 150,
-                   color: Colors.black87,
-                   child: ValueListenableBuilder<String>(
-                     valueListenable: GlobalDebug.log,
-                     builder: (ctx, val, _) => SingleChildScrollView(
-                       reverse: true,
-                       child: Text(val, style: const TextStyle(color: Colors.greenAccent, fontSize: 10)),
-                     ),
-                   )
-                 )
+                 // Container(
+                 //   height: 150,
+                 //   color: Colors.black87,
+                 //   child: ValueListenableBuilder<String>(
+                 //     valueListenable: GlobalDebug.log,
+                 //     builder: (ctx, val, _) => SingleChildScrollView(
+                 //       reverse: true,
+                 //       child: Text(val, style: const TextStyle(color: Colors.greenAccent, fontSize: 10)),
+                 //     ),
+                 //   )
+                 // )
                ]
             );
           },
@@ -67,27 +67,28 @@ class HomePage extends StatelessWidget {
   }
 
   void _showIncomingCallDialog(BuildContext context, CallRemoteUser request) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
          return AlertDialog(
-            title: const Text("Incoming Chat Request"),
-            content: Text("Incoming call from ${request.localNickname} (${request.senderUid})"),
+            title: Text(l10n.incomingChatRequestTitle),
+            content: Text(l10n.incomingCallFrom.replaceAll('{nickname}', request.localNickname).replaceAll('{userid}', request.senderUid)),
             actions: [
                TextButton(
                   onPressed: () {
                      Navigator.of(ctx).pop(); // Close dialog
                      context.read<ChatBloc>().add(RejectIncomingCall());
                   },
-                  child: const Text("Reject"),
+                  child: Text(l10n.rejectButton),
                ),
                TextButton(
                   onPressed: () {
                      Navigator.of(ctx).pop(); // Close dialog
                      context.read<ChatBloc>().add(AcceptIncomingCall());
                   },
-                  child: const Text("Accept"),
+                  child: Text(l10n.acceptButton),
                ),
             ],
          );
@@ -99,7 +100,8 @@ class HomePage extends StatelessWidget {
            if (state is UserListLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is UserListError) {
-            return Center(child: Text('Error: ${state.message}'));
+            final l10n = AppLocalizations.of(context)!;
+            return Center(child: Text(l10n.errorPrefix.replaceAll('{message}', state.message)));
           } else if (state is UserListLoaded) {
             if (state.users.isEmpty) {
               return Center(child: Text(AppLocalizations.of(context)!.noUsersOnline));
@@ -138,6 +140,7 @@ class HomePage extends StatelessWidget {
               },
             );
           }
-          return const Center(child: Text('Welcome!'));
+          final l10n = AppLocalizations.of(context)!;
+          return Center(child: Text(l10n.welcomeMessage));
   }
 }

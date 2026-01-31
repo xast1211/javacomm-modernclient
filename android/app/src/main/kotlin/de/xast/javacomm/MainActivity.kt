@@ -1,4 +1,4 @@
-package net.javacomm.flutter_client
+package de.xast.javacomm
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../../core/theme/theme_cubit.dart';
+import '../../core/theme/language_cubit.dart';
 import '../../core/theme/app_theme.dart'; // Ensure AppThemeType is available if not exported by cubit
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
@@ -50,7 +51,7 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             builder: (context, themeState) {
               return PopupMenuButton<AppThemeType>(
                 icon: const Icon(Icons.style),
-                tooltip: 'Farbschema', // Localize later if needed
+                tooltip: AppLocalizations.of(context)!.themeTooltip,
                 onSelected: (AppThemeType result) {
                   context.read<ThemeCubit>().changeTheme(result);
                 },
@@ -90,6 +91,36 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     value: AppThemeType.system,
                     checked: themeState.type == AppThemeType.system,
                     child: const Text('System Standard'),
+                  ),
+                ],
+              );
+            },
+          ),
+          
+          // Language Menu
+          BlocBuilder<LanguageCubit, Locale>(
+            builder: (context, locale) {
+              return PopupMenuButton<Locale>(
+                icon: const Icon(Icons.language),
+                tooltip: AppLocalizations.of(context)!.languageTooltip,
+                onSelected: (Locale result) {
+                  context.read<LanguageCubit>().changeLanguage(result);
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
+                  CheckedPopupMenuItem<Locale>(
+                    value: const Locale('de'),
+                    checked: locale.languageCode == 'de',
+                    child: Text(AppLocalizations.of(context)!.languageDeutsch),
+                  ),
+                  CheckedPopupMenuItem<Locale>(
+                    value: const Locale('en'),
+                    checked: locale.languageCode == 'en',
+                    child: Text(AppLocalizations.of(context)!.languageEnglish),
+                  ),
+                  CheckedPopupMenuItem<Locale>(
+                    value: const Locale('es'),
+                    checked: locale.languageCode == 'es',
+                    child: Text(AppLocalizations.of(context)!.languageEspanol),
                   ),
                 ],
               );

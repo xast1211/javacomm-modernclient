@@ -52,6 +52,7 @@ UpdateUserDataset _$UpdateUserDatasetFromJson(Map<String, dynamic> json) =>
       nickname: json['NICKNAME'] as String?,
       foregroundColor: (json['FOREGROUND_COLOR'] as num?)?.toInt(),
       backgroundColor: (json['BACKGROUND_COLOR'] as num?)?.toInt(),
+      language: json['LANGUAGE'] as String?,
     );
 
 Map<String, dynamic> _$UpdateUserDatasetToJson(UpdateUserDataset instance) =>
@@ -60,4 +61,5 @@ Map<String, dynamic> _$UpdateUserDatasetToJson(UpdateUserDataset instance) =>
       if (instance.nickname case final value?) 'NICKNAME': value,
       if (instance.foregroundColor case final value?) 'FOREGROUND_COLOR': value,
       if (instance.backgroundColor case final value?) 'BACKGROUND_COLOR': value,
+      if (instance.language case final value?) 'LANGUAGE': value,
     };

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../core/theme/theme_cubit.dart';
+import '../../core/theme/language_cubit.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -16,8 +17,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController(text: 'xast@xast.de');
-  final _passwordController = TextEditingController(text: 'LarsBabs');
+  final _emailController = TextEditingController(text: '');
+  final _passwordController = TextEditingController(text: '');
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -44,7 +45,39 @@ class _LoginPageState extends State<LoginPage> {
     final l10n = AppLocalizations.of(context)!;
     
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.loginTitle)),
+      appBar: AppBar(
+        title: Text(l10n.loginTitle),
+        actions: [
+          BlocBuilder<LanguageCubit, Locale>(
+            builder: (context, locale) {
+              return PopupMenuButton<Locale>(
+                icon: const Icon(Icons.language),
+                tooltip: l10n.languageTooltip,
+                onSelected: (Locale result) {
+                  context.read<LanguageCubit>().changeLanguage(result);
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
+                  CheckedPopupMenuItem<Locale>(
+                    value: const Locale('de'),
+                    checked: locale.languageCode == 'de',
+                    child: Text(l10n.languageDeutsch),
+                  ),
+                  CheckedPopupMenuItem<Locale>(
+                    value: const Locale('en'),
+                    checked: locale.languageCode == 'en',
+                    child: Text(l10n.languageEnglish),
+                  ),
+                  CheckedPopupMenuItem<Locale>(
+                    value: const Locale('es'),
+                    checked: locale.languageCode == 'es',
+                    child: Text(l10n.languageEspanol),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthFailure) {
@@ -53,18 +86,21 @@ class _LoginPageState extends State<LoginPage> {
             );
           } else if (state is SignInSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text('Sign In Successful')),
+               SnackBar(content: Text(l10n.signInSuccessful)),
             );
             
             // Initialize Chat Repos
-            final userId = state.response.userid ?? 'unknown';
-            final nickname = state.response.nickname ?? 'Guest';
+            final userId = state.response.userid ?? l10n.unknownUser;
+            final nickname = state.response.nickname ?? l10n.guestUser;
             final sessionId = state.response.sessionId;
             
             context.read<ChatRepository>().initializeUser(userId, nickname, sessionId: sessionId);
             
             // Load Saved Theme
             context.read<ThemeCubit>().loadSavedTheme(userId: userId);
+            
+            // Load Saved Language
+            context.read<LanguageCubit>().loadSavedLanguage(userId: userId);
 
             // Navigate to Home
             context.go('/home');
@@ -86,11 +122,11 @@ class _LoginPageState extends State<LoginPage> {
                      controller: _emailController,
                      decoration: InputDecoration(
                        labelText: l10n.loginUsernameHint, // Or Email hint
-                       hintText: 'user@example.com',
+                       hintText: l10n.emailHintExample,
                      ),
                      validator: (value) {
                        if (value == null || value.isEmpty) {
-                         return 'Please enter email';
+                         return l10n.validationEmailRequired;
                        }
                        return null;
                      },
@@ -105,7 +141,7 @@ class _LoginPageState extends State<LoginPage> {
                      obscureText: true,
                      validator: (value) {
                        if (value == null || value.isEmpty) {
-                         return 'Please enter password';
+                         return l10n.validationPasswordRequired;
                        }
                        return null;
                      },

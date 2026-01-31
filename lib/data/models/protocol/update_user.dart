@@ -56,12 +56,16 @@ class UpdateUserDataset {
   
   @JsonKey(name: 'BACKGROUND_COLOR')
   final int? backgroundColor;
+  
+  @JsonKey(name: 'LANGUAGE')
+  final String? language;
 
   UpdateUserDataset({
     required this.identity,
     this.nickname,
     this.foregroundColor,
     this.backgroundColor,
+    this.language,
   });
 
   factory UpdateUserDataset.fromJson(Map<String, dynamic> json) =>

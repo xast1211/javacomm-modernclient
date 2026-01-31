@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../bloc/settings_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
@@ -107,20 +108,20 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             const SizedBox(height: 8),
-            _buildSlider('Red', r, Colors.red, (val) {
+            _buildSlider(AppLocalizations.of(context)!.colorRed, r, Colors.red, (val) {
                onChanged(Color.fromARGB(255, val, g, b).value);
             }),
-            _buildSlider('Green', g, Colors.green, (val) {
+            _buildSlider(AppLocalizations.of(context)!.colorGreen, g, Colors.green, (val) {
                onChanged(Color.fromARGB(255, r, val, b).value);
             }),
-            _buildSlider('Blue', b, Colors.blue, (val) {
+            _buildSlider(AppLocalizations.of(context)!.colorBlue, b, Colors.blue, (val) {
                onChanged(Color.fromARGB(255, r, g, val).value);
             }),
             const SizedBox(height: 8),
             // Hex Input
             Row(
                children: [
-                  const Text('Hex: #'),
+                  Text(AppLocalizations.of(context)!.hexColorLabel),
                   const SizedBox(width: 8),
                   Expanded(
                     child: SizedBox(
@@ -177,124 +178,135 @@ class _SettingsPageState extends State<SettingsPage> {
     
     // Only proceed if user is signed in
     if (authState is! SignInSuccess) {
-        return const Scaffold(body: Center(child: Text('Error: Not Logged In')));
+        return Scaffold(body: Center(child: Text(AppLocalizations.of(context)!.errorNotLoggedIn)));
     }
     
     final userId = authState.userId;
 
     if (userId == null) {
-        return const Scaffold(body: Center(child: Text('Error: User ID not available')));
+        return Scaffold(body: Center(child: Text(AppLocalizations.of(context)!.errorUserIdMissing)));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Account Settings'),
+        title: Text(AppLocalizations.of(context)!.accountSettingsTitle),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, -2),
+            )
+          ],
+        ),
+        child: SafeArea(
+          child: BlocBuilder<SettingsBloc, SettingsState>(
+             builder: (context, state) {
+                 if (state is SettingsLoading) {
+                     return const Padding(
+                       padding: EdgeInsets.symmetric(vertical: 8.0),
+                       child: Center(child: CircularProgressIndicator()),
+                     );
+                 }
+                 return ElevatedButton(
+                     style: ElevatedButton.styleFrom(
+                       padding: const EdgeInsets.symmetric(vertical: 16), // Comfortable padding
+                     ),
+                     onPressed: () => _onSave(userId), 
+                     child: Text(AppLocalizations.of(context)!.saveChangesButton, style: const TextStyle(fontSize: 18)),
+                 );
+             },
+          ),
+        ),
       ),
       body: BlocListener<SettingsBloc, SettingsState>(
         listener: (context, state) {
            if (state is SettingsSuccess) {
-               // Update Local State in AuthBloc
                context.read<AuthBloc>().add(UpdateLocalProfile(
                   nickname: _nicknameController.text,
                   email: _emailController.text,
                   foregroundColor: _fgColor,
                   backgroundColor: _bgColor,
                ));
-               
                ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text('Profile Updated Successfully')),
+                   SnackBar(content: Text(AppLocalizations.of(context)!.profileUpdatedSuccess)),
                );
                context.pop();
            } else if (state is SettingsFailure) {
+               final l10n = AppLocalizations.of(context)!;
                ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(content: Text('Update Failed: ${state.error}')),
+                   SnackBar(content: Text(l10n.updateFailedPrefix.replaceAll('{error}', state.error))),
                );
            }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              children: [
-                 // User ID
-                 TextFormField(
-                     initialValue: userId,
-                     decoration: const InputDecoration(labelText: 'User ID', prefixIcon: Icon(Icons.person)),
-                     readOnly: true,
-                     enabled: false,
-                 ),
-                 const SizedBox(height: 16),
-                 
-                 // Nickname
-                 TextFormField(
-                     controller: _nicknameController,
-                     decoration: const InputDecoration(labelText: 'Nickname', prefixIcon: Icon(Icons.badge)),
-                     validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
-                 ),
-                 const SizedBox(height: 16),
-                 
-                 // Email
-                 TextFormField(
-                     controller: _emailController,
-                     decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email)),
-                     validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
-                 ),
-                 const SizedBox(height: 24),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+               TextFormField(
+                   initialValue: userId,
+                   decoration: InputDecoration(
+                     labelText: AppLocalizations.of(context)!.userIdLabel,
+                     prefixIcon: const Icon(Icons.person),
+                     floatingLabelBehavior: FloatingLabelBehavior.always,
+                   ),
+                   readOnly: true,
+               ),
+               const SizedBox(height: 16),
+               
+               TextFormField(
+                   controller: _nicknameController,
+                   decoration: InputDecoration(labelText: AppLocalizations.of(context)!.nicknameLabel, prefixIcon: const Icon(Icons.badge)),
+                   validator: (value) => (value == null || value.isEmpty) ? AppLocalizations.of(context)!.validationRequired : null,
+               ),
+               const SizedBox(height: 16),
+               
+               TextFormField(
+                   controller: _emailController,
+                   decoration: InputDecoration(labelText: AppLocalizations.of(context)!.emailLabel, prefixIcon: const Icon(Icons.email)),
+                   validator: (value) => (value == null || value.isEmpty) ? AppLocalizations.of(context)!.validationRequired : null,
+               ),
+               const SizedBox(height: 24),
 
-                 // Colors
-                 _buildRGBPicker('Text Color', _fgColor, (val) => setState(() => _fgColor = val)),
-                 const SizedBox(height: 16),
-                 _buildRGBPicker('Background Color', _bgColor, (val) => setState(() => _bgColor = val)),
-                 const SizedBox(height: 24),
-                 
-                 // Password
-                 CheckboxListTile(
-                     title: const Text('Change Password'),
-                     value: _changePassword,
-                     onChanged: (val) {
-                         setState(() {
-                             _changePassword = val ?? false;
-                         });
-                     },
-                 ),
-                 if (_changePassword) ...[
-                     TextFormField(
-                         controller: _passwordController,
-                         decoration: const InputDecoration(labelText: 'New Password', prefixIcon: Icon(Icons.lock)),
-                         obscureText: true,
-                         validator: (value) => (_changePassword && (value == null || value.isEmpty)) ? 'Required' : null,
-                     ),
-                     const SizedBox(height: 16),
-                     TextFormField(
-                         controller: _confirmPasswordController,
-                         decoration: const InputDecoration(labelText: 'Confirm Password', prefixIcon: Icon(Icons.lock_clock)),
-                         obscureText: true,
-                         validator: (value) {
-                             if (_changePassword && value != _passwordController.text) return 'Mismatch';
-                             return null;
-                         },
-                     ),
-                 ],
-                 
-                 const SizedBox(height: 32),
-                 
-                 BlocBuilder<SettingsBloc, SettingsState>(
-                     builder: (context, state) {
-                         if (state is SettingsLoading) {
-                             return const Center(child: CircularProgressIndicator());
-                         }
-                         return SizedBox(
-                           height: 50,
-                           child: ElevatedButton(
-                               onPressed: () => _onSave(userId), 
-                               child: const Text('Save Changes', style: TextStyle(fontSize: 18)),
-                           ),
-                         );
-                     },
-                 ),
-              ],
-            ),
+               _buildRGBPicker(AppLocalizations.of(context)!.textColorLabel, _fgColor, (val) => setState(() => _fgColor = val)),
+               const SizedBox(height: 16),
+               _buildRGBPicker(AppLocalizations.of(context)!.backgroundColorLabel, _bgColor, (val) => setState(() => _bgColor = val)),
+               const SizedBox(height: 24),
+               
+               CheckboxListTile(
+                   title: Text(AppLocalizations.of(context)!.changePasswordLabel),
+                   value: _changePassword,
+                   onChanged: (val) {
+                       setState(() {
+                           _changePassword = val ?? false;
+                       });
+                   },
+               ),
+               if (_changePassword) ...[
+                   TextFormField(
+                       controller: _passwordController,
+                       decoration: InputDecoration(labelText: AppLocalizations.of(context)!.newPasswordLabel, prefixIcon: const Icon(Icons.lock)),
+                       obscureText: true,
+                       validator: (value) => (_changePassword && (value == null || value.isEmpty)) ? AppLocalizations.of(context)!.validationRequired : null,
+                   ),
+                   const SizedBox(height: 16),
+                   TextFormField(
+                       controller: _confirmPasswordController,
+                       decoration: InputDecoration(labelText: AppLocalizations.of(context)!.confirmPasswordLabel, prefixIcon: const Icon(Icons.lock_clock)),
+                       obscureText: true,
+                       validator: (value) {
+                           if (_changePassword && value != _passwordController.text) return AppLocalizations.of(context)!.validationPasswordMismatch;
+                           return null;
+                       },
+                   ),
+               ],
+               const SizedBox(height: 20),
+            ],
           ),
         ),
       ),

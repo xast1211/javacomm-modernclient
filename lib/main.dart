@@ -7,12 +7,14 @@ import 'package:http/http.dart' as http;
 
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_cubit.dart';
+import 'core/theme/language_cubit.dart';
 import 'core/constants/api_constants.dart';
 import 'core/network/websocket_service.dart';
 
 import 'data/datasources/auth_remote_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/chat_repository_impl.dart';
+import 'data/repositories/theme_repository.dart';
 
 import 'domain/repositories/auth_repository.dart';
 import 'domain/repositories/chat_repository.dart';
@@ -104,25 +106,34 @@ class MyApp extends StatelessWidget {
           BlocProvider(
              create: (context) => ThemeCubit(),
           ),
+          BlocProvider(
+             create: (context) => LanguageCubit(
+                themeRepository: ThemeRepository(),
+             )..loadSavedLanguage(),
+          ),
         ],
         child: BlocBuilder<ThemeCubit, ThemeState>(
           builder: (context, themeState) {
-            return MaterialApp.router(
-              title: 'Javacomm Client',
-              theme: themeState.themeData,
-              // Note: themeMode is handled by the manually selected themeData now (mostly light-based)
-              // We could implement pure Dark Mode switch separately or map some themes to dark.
-              localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [
-            Locale('en'), // English
-            Locale('de'), // German
-          ],
-          routerConfig: _router,
+            return BlocBuilder<LanguageCubit, Locale>(
+              builder: (context, locale) {
+                return MaterialApp.router(
+                  title: 'Javacomm Client',
+                  theme: themeState.themeData,
+                  locale: locale, // Dynamic Locale
+                  localizationsDelegates: const [
+                    AppLocalizations.delegate,
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
+                  supportedLocales: const [
+                    Locale('de'), // German (Default)
+                    Locale('en'), // English
+                    Locale('es'), // Spanish
+                  ],
+                  routerConfig: _router,
+                );
+              },
             );
           },
         ),

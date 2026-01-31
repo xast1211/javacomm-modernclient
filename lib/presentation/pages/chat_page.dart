@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
@@ -61,8 +62,9 @@ class _ChatPageState extends State<ChatPage> {
                 
                 if (state.status == ChatConnectionStatus.disconnected) {
                   print('ChatPage: Status is DISCONNECTED. Closing chat.');
+                  final l10n = AppLocalizations.of(context)!;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chat closed (Peer left or connection lost)')),
+                    SnackBar(content: Text(l10n.chatClosedMessage)),
                   );
                   
                   if (context.mounted) {
@@ -142,7 +144,7 @@ class _ChatPageState extends State<ChatPage> {
                 Expanded(
                   child: TextField(
                     controller: _textController,
-                    decoration: const InputDecoration(hintText: 'Type a message'),
+                    decoration: InputDecoration(hintText: AppLocalizations.of(context)!.typeMessageHint),
                     onSubmitted: (_) => _sendMessage(),
                   ),
                 ),

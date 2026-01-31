@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:pointycastle/asymmetric/api.dart'; // For RSAPublicKey
 
@@ -192,13 +193,17 @@ class AuthRepositoryImpl implements AuthRepository {
 
     try {
         await webSocketService.connect(wsUrl);
+        
+        print('WebSocket connected. Preparing USRLOGIN...');
+        print('AGENT: ${_getPlatformAgent()}');
+        print('Identifying as: $email');
 
         // 8. Send USRLOGIN
         final usrLogin = UsrLogin(
         header: Header.REQUEST,
         command: Command.USRLOGIN,
         dataset: {
-            'AGENT': 'Browser', 
+            'AGENT': _getPlatformAgent(), 
             'IDENTITY': encryptedIdentity,
         },
         );
@@ -227,10 +232,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> updateProfile(String userId, {String? nickname, String? email, String? password, int? foregroundColor, int? backgroundColor}) async {
+  Future<void> updateProfile(String userId, {String? nickname, String? email, String? password, int? foregroundColor, int? backgroundColor, String? language}) async {
     print('=== UPDATEUSER DEBUG START ===');
     print('Input parameters:');
     print('  userId: $userId');
+    print('  language: $language');
     print('  nickname: $nickname');
     print('  email: $email');
     print('  password: ${password != null ? "[${password.length} chars]" : "null"}');
@@ -322,6 +328,7 @@ class AuthRepositoryImpl implements AuthRepository {
         nickname: nickname,
         foregroundColor: effectiveForegroundColor,
         backgroundColor: effectiveBackgroundColor,
+        language: language,
       ),
     );
     
@@ -393,4 +400,29 @@ class AuthRepositoryImpl implements AuthRepository {
     // JChat seems to wait for property change, which implies async confirmation.
     // We will handle confirmation in the BLoC by listening to the stream if needed, 
     // or just assume success if no error.
+  
+  /// Returns platform-specific agent string
+  /// Web → 'Browser'
+  /// Android/iOS → 'Smartphone'
+  /// Windows/macOS/Linux → 'Desktop'
+  /// Returns platform-specific agent string
+  /// Web → 'Browser'
+  /// Android/iOS → 'Smartphone'
+  /// Windows/macOS/Linux → 'Desktop'
+  String _getPlatformAgent() {
+    if (kIsWeb) {
+      return 'Browser';
+    }
+    // Use defaultTargetPlatform for non-web platforms
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+        return 'SmartPhone';
+      case TargetPlatform.windows:
+      case TargetPlatform.macOS:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return 'Desktop';
+    }
+  }
 }
