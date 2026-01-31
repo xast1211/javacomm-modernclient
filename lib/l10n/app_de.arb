@@ -1,0 +1,10 @@
+{
+  "appTitle": "Javacomm Client",
+  "loginTitle": "Anmelden",
+  "loginUsernameHint": "Benutzername",
+  "loginPasswordHint": "Passwort",
+  "loginButton": "Anmelden",
+  "registerButton": "Registrieren",
+  "errorMessage": "Ein Fehler ist aufgetreten",
+  "noInternet": "Keine Internetverbindung"
+}
