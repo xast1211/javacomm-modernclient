@@ -2,63 +2,86 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:encrypt/encrypt.dart';
+import 'package:encrypt/encrypt.dart'; // Keep for Key class and RSA key structure
 import 'package:pointycastle/export.dart' as pc;
 
 class CryptoUtil {
   static const int ivLength = 12; // 12 bytes for GCM
+  static const int macSize = 128; // 128 bits = 16 bytes
 
   /// Generates a random 128-bit AES key.
   static Key createAESKey() {
-      final secureRandom = pc.SecureRandom('Fortuna')
-      ..seed(pc.KeyParameter(
-          Uint8List.fromList(List.generate(32, (_) => Random.secure().nextInt(255)))));
-      
+    final secureRandom = _getSecureRandom();
     final keyBytes = secureRandom.nextBytes(16); // 128 bits
     return Key(keyBytes);
   }
+  
+  static pc.SecureRandom _getSecureRandom() {
+    final secureRandom = pc.SecureRandom('Fortuna')
+      ..seed(pc.KeyParameter(
+          Uint8List.fromList(List.generate(32, (_) => Random.secure().nextInt(255)))));
+    return secureRandom;
+  }
 
   /// Encrypts data using AES/GCM/NoPadding.
-  /// Returns Base64 encoded string containing [IV + EncryptedData].
+  /// Returns Base64 encoded string containing [IV + EncryptedData + AuthTag].
   static String encryptAES(String plainText, Key key) {
-    final iv = IV.fromLength(ivLength); // Random IV
-    final encrypter = Encrypter(AES(key, mode: AESMode.gcm, padding: null));
+    final secureRandom = _getSecureRandom();
+    final iv = secureRandom.nextBytes(ivLength);
 
-    final encrypted = encrypter.encrypt(plainText, iv: iv);
+    final cipher = pc.GCMBlockCipher(pc.AESEngine());
+    // PointyCastle AEADParameters: (KeyParameter, macSize in BITS, nonce, associatedData)
+    final params = pc.AEADParameters(
+      pc.KeyParameter(key.bytes), 
+      macSize, 
+      iv, 
+      Uint8List(0) // Empty AAD
+    );
+
+    cipher.init(true, params); // true = encrypt
     
-    // Combine IV + Ciphertext (ignoring Auth Tag issue for a moment, encrypt package GCM handles tag usually appended)
-    // Java code: combined = iv + encryptedBytes
-    // Package encrypt: encrypted.bytes usually includes tag? Need to verify specific GCM behavior.
-    // Standard GCM: Ciphertext + Tag. 
-    // Java's GCM implementation outputs Ciphertext + Tag.
-    // Encrypter.encrypt returns Encrypted object. generic implementation.
-    
-    final combined = Uint8List(iv.bytes.length + encrypted.bytes.length);
-    combined.setAll(0, iv.bytes);
-    combined.setAll(iv.bytes.length, encrypted.bytes);
+    final input = utf8.encode(plainText);
+    final output = cipher.process(Uint8List.fromList(input)); // Output includes Ciphertext + Mac
+
+    // Combine IV + Output (Ciphertext + Mac)
+    final combined = Uint8List(iv.length + output.length);
+    combined.setAll(0, iv);
+    combined.setAll(iv.length, output);
 
     return base64.encode(combined);
   }
 
-  /// Decrypts Base64 encoded string [IV + EncryptedData] using AES/GCM/NoPadding.
+  /// Decrypts Base64 encoded string [IV + EncryptedData + AuthTag] using AES/GCM/NoPadding.
   /// Returns the decrypted String.
   static String decryptAES(String encryptedBase64, Key key) {
     final bytes = decryptAESBytes(encryptedBase64, key);
-    return utf8.decode(bytes, allowMalformed: true); 
+    return utf8.decode(bytes, allowMalformed: true);
   }
 
-  /// Decrypts Base64 encoded string [IV + EncryptedData] and returns raw bytes.
+  /// Decrypts Base64 encoded string [IV + EncryptedData + AuthTag] and returns raw bytes.
   static List<int> decryptAESBytes(String encryptedBase64, Key key) {
+    if (encryptedBase64.isEmpty) return [];
     final decoded = base64.decode(encryptedBase64);
     
+    // Check reasonable length: IV (12) + Tag (16) = 28 bytes minimum
+    if (decoded.length < ivLength + (macSize ~/ 8)) {
+       // Just proceed, let pointycaste throw if invalid
+    }
+
     final ivBytes = decoded.sublist(0, ivLength);
-    final cipherBytes = decoded.sublist(ivLength);
+    final cipherTextWithTag = decoded.sublist(ivLength);
     
-    final iv = IV(ivBytes);
-    final encrypter = Encrypter(AES(key, mode: AESMode.gcm, padding: null));
+    final cipher = pc.GCMBlockCipher(pc.AESEngine());
+    final params = pc.AEADParameters(
+      pc.KeyParameter(key.bytes), 
+      macSize, 
+      ivBytes, 
+      Uint8List(0) // Empty AAD
+    );
+
+    cipher.init(false, params); // false = decrypt
     
-    final encrypted = Encrypted(cipherBytes);
-    return encrypter.decryptBytes(encrypted, iv: iv);
+    return cipher.process(cipherTextWithTag);
   }
   
   /// Encrypts data using RSA/ECB/PKCS1Padding.
@@ -70,10 +93,6 @@ class CryptoUtil {
   /// Parses a PEM formatted Public Key string to RSAPublicKey
   static pc.RSAPublicKey parsePublicKeyFromPem(String pemString) {
     final parser = RSAKeyParser();
-    // JChat returns clean Base64 or PEM?
-    // Crypto.java: loadPublicRSAKey takes Base64 string of X.509
-    // RSAKeyParser expects PEM format usually (-----BEGIN PUBLIC KEY-----).
-    // If we get raw Base64, we might need to wrap it.
     
     String formattedPem = pemString;
     if (!pemString.contains('-----BEGIN PUBLIC KEY-----')) {

@@ -3,8 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/user_list_bloc.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../core/debug/global_debug.dart';
 import '../../data/models/protocol/call_remote_user.dart';
+import '../../core/theme/theme_cubit.dart';
+
+import '../widgets/jchat_app_bar.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -32,14 +36,9 @@ class HomePage extends StatelessWidget {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Online Users'),
-          actions: [
-             IconButton(
-               icon: const Icon(Icons.refresh),
-               onPressed: () => context.read<UserListBloc>().add(LoadUserList()),
-             ),
-          ],
+        appBar: const JChatAppBar(
+          title: 'Online Users',
+          showRefresh: true,
         ),
         body: BlocBuilder<UserListBloc, UserListState>(
           builder: (context, state) {
@@ -103,16 +102,16 @@ class HomePage extends StatelessWidget {
             return Center(child: Text('Error: ${state.message}'));
           } else if (state is UserListLoaded) {
             if (state.users.isEmpty) {
-              return const Center(child: Text('No users online.'));
+              return Center(child: Text(AppLocalizations.of(context)!.noUsersOnline));
             }
             return ListView.builder(
               itemCount: state.users.length,
               itemBuilder: (context, index) {
                 final user = state.users[index];
                 return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(user.nickname.substring(0, 1).toUpperCase()),
-                  ),
+                  // leading: CircleAvatar(
+                  //   child: Text(user.nickname.substring(0, 1).toUpperCase()),
+                  // ),
                   title: Text(user.nickname),
                   subtitle: Text(user.userid),
                   trailing: const Icon(Icons.chat),
@@ -130,10 +129,10 @@ class HomePage extends StatelessWidget {
                      // But we show a loading indicator?
                      
                      // For now, push immediately so we see the chat screen waiting.
-                     context.push('/chat', extra: {
-                       'uid': user.userid,
-                       'nick': user.nickname,
-                     });
+                     // context.push('/chat', extra: {
+                     //   'uid': user.userid,
+                     //   'nick': user.nickname,
+                     // });
                   },
                 );
               },

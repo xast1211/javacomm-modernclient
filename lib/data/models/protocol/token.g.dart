@@ -15,9 +15,9 @@ Token _$TokenFromJson(Map<String, dynamic> json) => Token(
     );
 
 Map<String, dynamic> _$TokenToJson(Token instance) => <String, dynamic>{
-      'USERID': instance.userid,
-      'EMAIL': instance.email,
-      'PASSWORD': instance.password,
-      'AES': instance.aes,
-      'ONETIME': instance.onetime,
+      if (instance.userid case final value?) 'USERID': value,
+      if (instance.email case final value?) 'EMAIL': value,
+      if (instance.password case final value?) 'PASSWORD': value,
+      if (instance.aes case final value?) 'AES': value,
+      if (instance.onetime case final value?) 'ONETIME': value,
     };

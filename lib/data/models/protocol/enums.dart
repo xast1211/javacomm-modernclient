@@ -36,6 +36,8 @@ enum Command {
   ROOMLIST,
   @JsonValue('LEAVEPRIVATECHAT')
   LEAVEPRIVATECHAT,
+  @JsonValue('UPDATEUSER')
+  UPDATEUSER,
   // Add others as needed
 }
 

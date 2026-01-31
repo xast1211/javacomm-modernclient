@@ -23,4 +23,12 @@ class UsrLogin extends Message {
   
   @override
   Map<String, dynamic> toJson() => _$UsrLoginToJson(this);
+  
+  // Helper getters for dataset fields
+  String? get nickname => dataset['NICKNAME'] as String?;
+  int? get foregroundColor => dataset['FOREGROUND_COLOR'] as int?;
+  int? get backgroundColor => dataset['BACKGROUND_COLOR'] as int?;
+  int? get volume => dataset['VOLUME'] as int?;
+  bool? get oncall => dataset['ONCALL'] as bool?;
+  String? get session => dataset['SESSION'] as String?;
 }

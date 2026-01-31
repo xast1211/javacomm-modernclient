@@ -6,5 +6,6 @@
   "loginButton": "Login",
   "registerButton": "Register",
   "errorMessage": "An error occurred",
-  "noInternet": "No Internet Connection"
+  "noInternet": "No Internet Connection",
+  "noUsersOnline": "No users online."
 }

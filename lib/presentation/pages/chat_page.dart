@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/chat_bloc.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_state.dart';
+
+import '../widgets/jchat_app_bar.dart';
 
 class ChatPage extends StatefulWidget {
   final String recipientUid;
@@ -44,7 +48,10 @@ class _ChatPageState extends State<ChatPage> {
          return true;
       },
       child: Scaffold(
-      appBar: AppBar(title: Text(widget.recipientNickname)),
+      appBar: JChatAppBar(
+        title: widget.recipientNickname,
+        showRefresh: false,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -77,8 +84,29 @@ class _ChatPageState extends State<ChatPage> {
                     final isMe = msg.senderUid == 'ME' || msg.senderUid == context.read<ChatBloc>().chatRepository.myUserId;
                     
                     final colorScheme = Theme.of(context).colorScheme;
-                    final containerColor = isMe ? colorScheme.primaryContainer : colorScheme.secondaryContainer;
-                    final textColor = isMe ? colorScheme.onPrimaryContainer : colorScheme.onSecondaryContainer;
+                    Color? containerColor;
+                    Color? textColor;
+                    
+                    if (isMe) {
+                       // My Colors (from AuthBloc via ChatRepo or direct)
+                       // Since we updated ChatRepo, we can rely on it, OR just lookup AuthBloc
+                       final authState = context.read<AuthBloc>().state;
+                       if (authState is SignInSuccess) {
+                          if (authState.backgroundColor != null) containerColor = Color(authState.backgroundColor!);
+                          if (authState.foregroundColor != null) textColor = Color(authState.foregroundColor!);
+                       }
+                       // Fallback
+                       containerColor ??= colorScheme.primaryContainer;
+                       textColor ??= colorScheme.onPrimaryContainer;
+                    } else {
+                       // Peer Colors (from Message)
+                       if (msg.senderBackgroundColor != null) containerColor = Color(msg.senderBackgroundColor!);
+                       if (msg.senderForegroundColor != null) textColor = Color(msg.senderForegroundColor!);
+                       
+                       // Fallback
+                       containerColor ??= colorScheme.secondaryContainer;
+                       textColor ??= colorScheme.onSecondaryContainer;
+                    }
 
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -93,10 +121,11 @@ class _ChatPageState extends State<ChatPage> {
                             bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
                             bottomRight: isMe ? Radius.zero : const Radius.circular(12),
                           ),
+                          border: Border.all(color: Colors.grey.withOpacity(0.3)), // Subtle border
                         ),
                         child: Text(
                            msg.messageContent,
-                           style: TextStyle(color: textColor),
+                           style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
                         ),
                       ),
                     );

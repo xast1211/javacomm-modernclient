@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'token.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(includeIfNull: false)
 class Token {
   @JsonKey(name: 'USERID')
   String? userid;

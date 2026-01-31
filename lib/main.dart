@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_cubit.dart';
 import 'core/constants/api_constants.dart';
 import 'core/network/websocket_service.dart';
 
@@ -19,10 +20,12 @@ import 'domain/repositories/chat_repository.dart';
 import 'presentation/bloc/auth_bloc.dart';
 import 'presentation/bloc/user_list_bloc.dart';
 import 'presentation/bloc/chat_bloc.dart';
+import 'presentation/bloc/settings_bloc.dart';
 
 import 'presentation/pages/login_page.dart';
 import 'presentation/pages/home_page.dart';
 import 'presentation/pages/chat_page.dart';
+import 'presentation/pages/settings_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -64,6 +67,10 @@ final _router = GoRouter(
         );
       },
     ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsPage(),
+    ),
   ],
 );
 
@@ -90,14 +97,22 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider(
              create: (context) => ChatBloc(chatRepository: _chatRepository),
-          )
+          ),
+          BlocProvider(
+             create: (context) => SettingsBloc(authRepository: _authRepository),
+          ),
+          BlocProvider(
+             create: (context) => ThemeCubit(),
+          ),
         ],
-        child: MaterialApp.router(
-          title: 'Javacomm Client',
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
-          localizationsDelegates: const [
+        child: BlocBuilder<ThemeCubit, ThemeState>(
+          builder: (context, themeState) {
+            return MaterialApp.router(
+              title: 'Javacomm Client',
+              theme: themeState.themeData,
+              // Note: themeMode is handled by the manually selected themeData now (mostly light-based)
+              // We could implement pure Dark Mode switch separately or map some themes to dark.
+              localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -108,6 +123,8 @@ class MyApp extends StatelessWidget {
             Locale('de'), // German
           ],
           routerConfig: _router,
+            );
+          },
         ),
       ),
     );

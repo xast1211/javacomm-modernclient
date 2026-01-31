@@ -1,4 +1,5 @@
 import 'enums.dart';
+import 'update_user.dart';
 import 'message.dart';
 import 'chat_models.dart';
 import 'usrlogin.dart';
@@ -39,6 +40,9 @@ class MessageFactory {
           return KeepAlive.fromJson(json);
         case 'LEAVEPRIVATECHAT':
           return LeavePrivateChat.fromJson(json);
+          
+        case 'UPDATEUSER':
+          return UpdateUser.fromJson(json);
           
         // Add other commands here
         default:

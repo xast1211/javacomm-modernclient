@@ -13,6 +13,7 @@ import '../../core/constants/api_constants.dart';
 import '../models/protocol/enums.dart';
 import '../models/protocol/usrlogin.dart';
 import '../models/protocol/token.dart';
+import '../models/protocol/update_user.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -20,6 +21,13 @@ class AuthRepositoryImpl implements AuthRepository {
   
   // Storage for session keys
   encrypt.Key? _transactionAESKey;
+  
+  // Store current user credentials for UPDATEUSER
+  String? _currentUserId;
+  String? _currentEmail;
+  String? _currentPassword;
+  int? _currentForegroundColor;
+  int? _currentBackgroundColor;
 
   AuthRepositoryImpl({
     required this.remoteDataSource,
@@ -30,15 +38,28 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<SignInResponse> signIn(String email, String password, String lang) async {
        print('Starting WebSocket handshake for $email...'); 
        final result = await _performWebSocketLogin(email, password, userid: email);
-       final sessionId = result['sessionId'];
-       final userId = result['userid'] ?? email; // Fallback to email if decode fails (shouldn't happen)
+       final sessionId = result['sessionId'] as String?;
+       final userId = result['userid'] as String? ?? email; // Fallback to email if decode fails
+       final nickname = result['nickname'] as String?;
+       final foregroundColor = result['foregroundColor'] as int?;
+       final backgroundColor = result['backgroundColor'] as int?;
+       
+       // Store credentials for UPDATEUSER
+       _currentUserId = userId;
+       _currentEmail = email;
+       _currentPassword = password;
+       _currentForegroundColor = foregroundColor;
+       _currentBackgroundColor = backgroundColor;
 
        return SignInResponse(
            header: 'CONFIRM',
-           userid: userId!, 
+           userid: userId, 
            email: email,
+           nickname: nickname,
            password: password,
            sessionId: sessionId,
+           foregroundColor: foregroundColor,
+           backgroundColor: backgroundColor,
        );
   }
   
@@ -46,7 +67,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _performWebSocketLogin(email, password, userid: userid);
   }
 
-  Future<Map<String, String?>> _performWebSocketLogin(String email, String password, {String? userid}) async {
+  Future<Map<String, dynamic>> _performWebSocketLogin(String email, String password, {String? userid}) async {
     // 2. Fetch RSA Public Key
     final rsaPem = await remoteDataSource.getRsaPublicKey();
     final rsaPublicKey = CryptoUtil.parsePublicKeyFromPem(rsaPem);
@@ -81,21 +102,32 @@ class AuthRepositoryImpl implements AuthRepository {
     ).toString(); 
     
     // Prepare to listen for Handshake BEFORE sending
-    final completer = Completer<Map<String, String?>>();
+    final completer = Completer<Map<String, dynamic>>();
     StreamSubscription? subscription;
 
     subscription = webSocketService.messages.listen((message) {
+      // DEBUG: Log ALL incoming messages
+      print('WS Message received: Header=${message.header}, Command=${message.command}');
         if (message.command == Command.USRLOGIN) {
             if (message.header == Header.CONFIRM) {
                 print('WebSocket Login Confirmed!');
                 
-                // Extract Session ID from DATASET
+                // Extract data from DATASET
                 String? sessionId;
                 String? authoritativeUserId;
+                String? nickname;
+                int? foregroundColor;
+                int? backgroundColor;
 
                 if (message is UsrLogin) {
-                     sessionId = message.dataset['SESSION'] as String?;
+                     sessionId = message.session;
+                     nickname = message.nickname;
+                     foregroundColor = message.foregroundColor;
+                     backgroundColor = message.backgroundColor;
+                     
                      print('Session ID received: $sessionId');
+                     print('Nickname received: $nickname');
+                     print('Colors received: FG=$foregroundColor, BG=$backgroundColor');
                      
                      // Fix: IDENTITY is inside DATASET, not top-level
                      final identityEncrypted = message.dataset['IDENTITY'] as String?;
@@ -145,7 +177,10 @@ class AuthRepositoryImpl implements AuthRepository {
                 if (!completer.isCompleted) {
                    completer.complete({
                      'sessionId': sessionId,
-                     'userid': authoritativeUserId
+                     'userid': authoritativeUserId,
+                     'nickname': nickname,
+                     'foregroundColor': foregroundColor,
+                     'backgroundColor': backgroundColor,
                    });
                 }
             } else if (message.header == Header.ERROR) {
@@ -190,4 +225,172 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<String> getToken() {
      return remoteDataSource.getToken();
   }
+
+  @override
+  Future<void> updateProfile(String userId, {String? nickname, String? email, String? password, int? foregroundColor, int? backgroundColor}) async {
+    print('=== UPDATEUSER DEBUG START ===');
+    print('Input parameters:');
+    print('  userId: $userId');
+    print('  nickname: $nickname');
+    print('  email: $email');
+    print('  password: ${password != null ? "[${password.length} chars]" : "null"}');
+    print('  foregroundColor: $foregroundColor');
+    print('  backgroundColor: $backgroundColor');
+    
+    // Get current session AES key
+    if (_transactionAESKey == null) {
+      print('ERROR: No active session - AES key not available');
+      throw Exception('No active session - AES key not available');
+    }
+    
+    // Use stored credentials if not provided
+    final effectiveEmail = email ?? _currentEmail;
+    final effectivePassword = password ?? _currentPassword;
+    
+    print('Effective credentials:');
+    print('  effectiveEmail: $effectiveEmail');
+    print('  effectivePassword: ${effectivePassword != null ? "[${effectivePassword.length} chars]" : "null"}');
+    
+    // VALIDATION: Check required fields
+    if (effectiveEmail == null || effectiveEmail.isEmpty) {
+      print('ERROR: Email is required but is null or empty');
+      throw Exception('Email is required for profile update');
+    }
+    
+    if (effectivePassword == null || effectivePassword.isEmpty) {
+      print('ERROR: Password is required but is null or empty');
+      throw Exception('Password is required for profile update');
+    }
+    
+    if (effectivePassword.length < 3) {
+      print('ERROR: Password too short (${effectivePassword.length} chars, minimum 3)');
+      throw Exception('Password must be at least 3 characters');
+    }
+    
+    if (nickname != null && nickname.isNotEmpty) {
+      // Basic nickname validation (alphanumeric + some special chars)
+      final nicknamePattern = RegExp(r'^[a-zA-Z0-9_\-\.]+$');
+      if (!nicknamePattern.hasMatch(nickname)) {
+        print('ERROR: Nickname contains invalid characters: $nickname');
+        throw Exception('Nickname contains invalid characters');
+      }
+    }
+    
+    print('Validation passed ✓');
+    
+    // Get current colors from stored sign-in response if not provided
+    // Server requires non-null color values
+    final effectiveForegroundColor = foregroundColor ?? _currentForegroundColor ?? -16777216; // Default black
+    final effectiveBackgroundColor = backgroundColor ?? _currentBackgroundColor ?? -1; // Default white
+    
+    print('Effective colors:');
+    print('  foregroundColor: $effectiveForegroundColor');
+    print('  backgroundColor: $effectiveBackgroundColor');
+    
+    // FETCH FRESH ONETIME TOKEN (Requested by User)
+    String? onetimeToken;
+    try {
+      print('Fetching fresh OneTime Token for UPDATEUSER...');
+      onetimeToken = await remoteDataSource.getToken();
+      print('Fresh OneTime Token: "$onetimeToken"');
+    } catch (e) {
+      print('ERROR fetching OneTime Token: $e');
+      throw Exception('Failed to fetch required validation token');
+    }
+
+    // Create Token with userid, email, password AND onetime token
+    final token = Token(
+      userid: userId,
+      email: effectiveEmail,
+      password: effectivePassword,
+      onetime: onetimeToken,
+    );
+    
+    // Encrypt the token as IDENTITY
+    final tokenJson = token.toString();
+    print('Token JSON before encryption:');
+    print(tokenJson);
+    
+    final encryptedIdentity = CryptoUtil.encryptAES(tokenJson, _transactionAESKey!);
+    print('Encrypted IDENTITY length: ${encryptedIdentity.length}');
+    print('Encrypted IDENTITY (first 50): ${encryptedIdentity.substring(0, encryptedIdentity.length > 50 ? 50 : encryptedIdentity.length)}...');
+    
+    // Construct UpdateUser message with DATASET containing all fields
+    final updateUserMsg = UpdateUser(
+      dataset: UpdateUserDataset(
+        identity: encryptedIdentity,
+        nickname: nickname,
+        foregroundColor: effectiveForegroundColor,
+        backgroundColor: effectiveBackgroundColor,
+      ),
+    );
+    
+    print('UpdateUser message created');
+    print('Full message JSON:');
+    final messageJson = jsonEncode(updateUserMsg.toJson());
+    print(messageJson);
+    print('=== UPDATEUSER DEBUG END ===');
+
+    // Listen for server response
+    final responseCompleter = Completer<void>();
+    StreamSubscription? subscription;
+    
+    subscription = webSocketService.messages.listen((message) {
+      // DEBUG: Log ALL incoming messages
+      print('WS Message received: Header=${message.header}, Command=${message.command}');
+      
+      try {
+        if (message.command == Command.UPDATEUSER) {
+          if (message.header == Header.CONFIRM) {
+            print('  ✅ Profile update CONFIRMED by server');
+            if (nickname != null) {
+               // Update nickname logic if needed
+            }
+            if (foregroundColor != null) _currentForegroundColor = foregroundColor;
+            if (backgroundColor != null) _currentBackgroundColor = backgroundColor;
+            
+            if (!responseCompleter.isCompleted) {
+              responseCompleter.complete();
+            }
+          } else if (message.header == Header.ERROR) {
+             print('  ❌ Profile update ERROR from server');
+             String errorText = 'Unknown error';
+             if (!responseCompleter.isCompleted) {
+                responseCompleter.completeError('Server returned ERROR');
+             }
+          }
+        }
+      } catch (e) {
+        print('Error processing response: $e');
+      }
+    });
+
+    // Send via WebSocket
+    webSocketService.sendMessage(updateUserMsg);
+    
+    // Wait for response (with timeout)
+    try {
+      await responseCompleter.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('⚠️ UPDATEUSER response timeout - no response from server');
+          subscription?.cancel();
+          throw TimeoutException('No response from server');
+        },
+      );
+    } catch (e) {
+      print('UPDATEUSER failed: $e');
+      subscription?.cancel();
+      rethrow;
+    }
+    
+    // Update stored credentials if changed
+    if (email != null) _currentEmail = email;
+    if (password != null) _currentPassword = password;
+  }
+    // Note: The server likely sends a response (CONFIRM or ERROR), but JChat protocol is async.
+    // For now, we fire and forget, but in a real app we might want to wait for confirmation.
+    // JChat seems to wait for property change, which implies async confirmation.
+    // We will handle confirmation in the BLoC by listening to the stream if needed, 
+    // or just assume success if no error.
 }

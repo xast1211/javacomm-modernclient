@@ -51,6 +51,7 @@ const _$CommandEnumMap = {
   Command.CHATONLINELIST: 'CHATONLINELIST',
   Command.ROOMLIST: 'ROOMLIST',
   Command.LEAVEPRIVATECHAT: 'LEAVEPRIVATECHAT',
+  Command.UPDATEUSER: 'UPDATEUSER',
 };
 
 PrivateMessage _$PrivateMessageFromJson(Map<String, dynamic> json) =>

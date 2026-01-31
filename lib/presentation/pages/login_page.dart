@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../domain/repositories/chat_repository.dart';
+import '../../core/theme/theme_cubit.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -62,6 +63,9 @@ class _LoginPageState extends State<LoginPage> {
             
             context.read<ChatRepository>().initializeUser(userId, nickname, sessionId: sessionId);
             
+            // Load Saved Theme
+            context.read<ThemeCubit>().loadSavedTheme(userId: userId);
+
             // Navigate to Home
             context.go('/home');
           }

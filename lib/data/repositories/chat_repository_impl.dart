@@ -21,6 +21,8 @@ class ChatRepositoryImpl implements ChatRepository {
   String? myUserId;
   String? myNickname;
   String? mySessionId;
+  int? myForegroundColor;
+  int? myBackgroundColor;
   
   List<UserOnline> _lastRawUsers = [];
   List<UserOnline> _lastFilteredUsers = [];
@@ -50,10 +52,12 @@ class ChatRepositoryImpl implements ChatRepository {
 
 
   @override
-  void initializeUser(String userId, String nickname, {String? sessionId}) {
+  void initializeUser(String userId, String nickname, {String? sessionId, int? foregroundColor, int? backgroundColor}) {
     myUserId = userId;
     myNickname = nickname;
     mySessionId = sessionId;
+    myForegroundColor = foregroundColor;
+    myBackgroundColor = backgroundColor;
     
     // Send initial KeepAlive immediately
     if (mySessionId != null) {
@@ -221,8 +225,8 @@ class ChatRepositoryImpl implements ChatRepository {
           'CHATUSER': {
              'USERID': myUserId ?? '',
              'NICKNAME': myNickname ?? '',
-             'FOREGROUND_COLOR': 0, 
-             'BACKGROUND_COLOR': 0, 
+             'FOREGROUND_COLOR': myForegroundColor ?? 0xFF000000, 
+             'BACKGROUND_COLOR': myBackgroundColor ?? 0xFFFFFFFF, 
           },
           // JChat checks for this ID to match the session.
           'LOCAL_SESSIONID': localSessionId ?? '',

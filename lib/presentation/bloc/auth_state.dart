@@ -16,6 +16,12 @@ class SignInSuccess extends AuthState {
   final SignInResponse response;
 
   const SignInSuccess(this.response);
+  
+  String? get userId => response.userid;
+  String? get nickname => response.nickname;
+  String? get email => response.email;
+  int? get foregroundColor => response.foregroundColor;
+  int? get backgroundColor => response.backgroundColor;
 
   @override
   List<Object?> get props => [response];

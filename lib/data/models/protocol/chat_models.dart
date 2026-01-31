@@ -103,6 +103,10 @@ class PrivateMessage extends Message {
   String? get remoteSessionId => dataset['REMOTE_SESSIONID'] as String?;
   String get messageContent => dataset['MESSAGE'] as String? ?? '';
   int? get datetime => dataset['DATETIME'] as int?;
+  
+  Map<String, dynamic>? get _chatUser => dataset['CHATUSER'] as Map<String, dynamic>?;
+  int? get senderForegroundColor => _chatUser?['FOREGROUND_COLOR'] as int?;
+  int? get senderBackgroundColor => _chatUser?['BACKGROUND_COLOR'] as int?;
 }
 
 @JsonSerializable(explicitToJson: true)

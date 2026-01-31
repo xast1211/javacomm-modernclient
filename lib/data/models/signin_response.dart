@@ -9,8 +9,8 @@ class SignInResponse {
   final String? email;
   final String? nickname;
   final String? password; // Encrypted or new?
-  final String? foregroundColor;
-  final String? backgroundColor;
+  final int? foregroundColor;
+  final int? backgroundColor;
   final String? multilingualkey;
   final String? text;
   final String? errorCode;

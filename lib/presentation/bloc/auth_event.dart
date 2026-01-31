@@ -17,3 +17,25 @@ class SignInRequested extends AuthEvent {
   @override
   List<Object> get props => [email, password, lang];
 }
+
+class UpdateLocalProfile extends AuthEvent {
+  final String? nickname;
+  final String? email;
+  final int? foregroundColor;
+  final int? backgroundColor;
+
+  const UpdateLocalProfile({
+    this.nickname, 
+    this.email,
+    this.foregroundColor,
+    this.backgroundColor,
+  });
+
+  @override
+  List<Object> get props => [
+    if (nickname != null) nickname!, 
+    if (email != null) email!,
+    if (foregroundColor != null) foregroundColor!,
+    if (backgroundColor != null) backgroundColor!,
+  ];
+}
