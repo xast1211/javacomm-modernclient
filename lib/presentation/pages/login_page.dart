@@ -5,6 +5,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../core/theme/theme_cubit.dart';
 import '../../core/theme/language_cubit.dart';
+import '../../core/auth/biometric_service.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -20,6 +21,50 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController(text: '');
   final _passwordController = TextEditingController(text: '');
   final _formKey = GlobalKey<FormState>();
+  final _biometricService = BiometricService();
+  bool _canCheckBiometrics = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+    _tryBiometricLogin();
+  }
+
+  Future<void> _checkBiometrics() async {
+    final available = await _biometricService.isBiometricAvailable;
+    final creds = await _biometricService.getCredentials();
+    if (mounted) {
+      setState(() {
+        _canCheckBiometrics = available && creds != null;
+      });
+    }
+  }
+  
+  Future<void> _tryBiometricLogin({bool auto = false}) async {
+    if (!_canCheckBiometrics && auto) return;
+    
+    // Only auto-login if explicitly requested or maybe just show button?
+    // User requested "can I unlock with...?" so existing users expect a button or prompt.
+  }
+  
+  Future<void> _onBiometricPress() async {
+    final authenticated = await _biometricService.authenticate();
+    if (authenticated) {
+      final creds = await _biometricService.getCredentials();
+      if (creds != null && mounted) {
+        final email = creds['email']!;
+        final password = creds['password']!;
+        
+        // Populate controllers so listener logic works correctly
+        _emailController.text = email;
+        _passwordController.text = password;
+        
+        final lang = AppLocalizations.of(context)?.localeName.split('_').first ?? 'en';
+        context.read<AuthBloc>().add(SignInRequested(email: email, password: password, lang: lang));
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -32,8 +77,6 @@ class _LoginPageState extends State<LoginPage> {
     if (_formKey.currentState!.validate()) {
       final email = _emailController.text;
       final password = _passwordController.text;
-      // Use current locale or allow selection. Default to 'de' if context not available?
-      // AppLocalizations.of(context)!.localeName might differ from API expected 'de' or 'en'
       final lang = AppLocalizations.of(context)?.localeName.split('_').first ?? 'en';
       
       context.read<AuthBloc>().add(SignInRequested(email: email, password: password, lang: lang));
@@ -79,7 +122,7 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
       body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
@@ -89,6 +132,48 @@ class _LoginPageState extends State<LoginPage> {
                SnackBar(content: Text(l10n.signInSuccessful)),
             );
             
+            // Check if we need to update/overwrite biometric credentials
+            final currentEmail = _emailController.text;
+            final currentPass = _passwordController.text;
+            
+            if (currentEmail.isNotEmpty && currentPass.isNotEmpty) {
+                 final storedCreds = await _biometricService.getCredentials();
+                 bool shouldSave = true;
+
+                 if (storedCreds != null) {
+                     final storedEmail = storedCreds['email'];
+                     if (storedEmail != null && storedEmail != currentEmail) {
+                         // Different user! Prompt overwrite.
+                         if (context.mounted) {
+                             final confirmUrl = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                    title: const Text('Biometrie update'),
+                                    content: Text('Es sind Daten für "$storedEmail" gespeichert.\nMöchten Sie diese mit "$currentEmail" überschreiben?'),
+                                    actions: [
+                                        TextButton(
+                                            onPressed: () => Navigator.pop(ctx, false),
+                                            child: const Text('Nein'),
+                                        ),
+                                        TextButton(
+                                            onPressed: () => Navigator.pop(ctx, true),
+                                            child: const Text('Ja, überschreiben'),
+                                        ),
+                                    ],
+                                ),
+                             );
+                             shouldSave = confirmUrl ?? false;
+                         }
+                     }
+                 }
+                 
+                 if (shouldSave) {
+                     await _biometricService.saveCredentials(currentEmail, currentPass);
+                 }
+            }
+            
+            if (!context.mounted) return;
+
             // Initialize Chat Repos
             final userId = state.response.userid ?? l10n.unknownUser;
             final nickname = state.response.nickname ?? l10n.guestUser;
@@ -147,9 +232,22 @@ class _LoginPageState extends State<LoginPage> {
                      },
                    ),
                    const SizedBox(height: 24),
-                   ElevatedButton(
-                     onPressed: _onLogin,
-                     child: Text(l10n.loginButton),
+                   Row(
+                     mainAxisAlignment: MainAxisAlignment.center,
+                     children: [
+                       ElevatedButton(
+                         onPressed: _onLogin,
+                         child: Text(l10n.loginButton),
+                       ),
+                       if (_canCheckBiometrics) ...[
+                         const SizedBox(width: 16),
+                         IconButton(
+                           icon: const Icon(Icons.fingerprint, size: 32),
+                           tooltip: 'Biometric Login',
+                           onPressed: _onBiometricPress,
+                         )
+                       ]
+                     ],
                    ),
                 ],
               ),
