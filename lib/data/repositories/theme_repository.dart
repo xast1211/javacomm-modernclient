@@ -96,8 +96,9 @@ class ThemeRepository {
 
   Future<bool> updateUserLanguage(String userId, String languageCode) async {
     // New Endpoint: PUT /javacommserver/user/write/language/{language}/{userid}
-    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/write/language/$languageCode/$userId');
-    print('ThemeRepo: Updating language for $userId to $languageCode via $url');
+    // Server expects Lowercase Enum (de, en, es) - verified in Language.java
+    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/write/language/${languageCode.toLowerCase()}/$userId');
+    print('ThemeRepo: Updating language for $userId to ${languageCode.toLowerCase()} via $url');
     try {
       final response = await http.put(
         url,
