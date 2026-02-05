@@ -39,8 +39,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // 1. Disconnect WebSocket
     await authRepository.disconnect();
     
-    // 2. Clear Session Data in Repositories if needed
-    // (ChatRepository might need a clear method, but initializedUser overwrites anyway)
+    // 2. Clear Session Data in Repositories
+    chatRepository.disconnect();
     
     // 3. Emit Initial State to trigger Router Redirect
     emit(AuthInitial());

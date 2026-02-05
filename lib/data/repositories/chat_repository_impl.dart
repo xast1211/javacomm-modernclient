@@ -285,8 +285,22 @@ class ChatRepositoryImpl implements ChatRepository {
       webSocketService.sendMessage(message);
   }
 
-  void dispose() {
+  @override
+  void disconnect() {
       _keepAliveTimer?.cancel();
+      _keepAliveTimer = null;
+      myUserId = null;
+      mySessionId = null;
+      print('ChatRepository: Disconnected and KeepAlive stopped.');
+  }
+
+  void dispose() {
+      disconnect();
       _callRemoteUserController.close();
+      _onlineUsersController.close();
+      _privateMessageController.close();
+      _privateChatRequestController.close();
+      _callPrivateChatResponseController.close();
+      _leavePrivateChatController.close();
   }
 }

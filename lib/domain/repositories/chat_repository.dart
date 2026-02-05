@@ -22,4 +22,5 @@ abstract class ChatRepository {
   void rejectCallRemoteUser(CallRemoteUser request);
   void initializeUser(String userId, String nickname, {String? sessionId, int? foregroundColor, int? backgroundColor});
   void sendMessage(PrivateMessage message);
+  void disconnect();
 }
