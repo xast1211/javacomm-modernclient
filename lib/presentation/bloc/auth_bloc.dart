@@ -1,3 +1,4 @@
+import 'dart:async'; // Required for StreamSubscription
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -9,13 +10,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
   final ChatRepository chatRepository;
 
+  StreamSubscription<SignInResponse>? _userSubscription;
+
   AuthBloc({
     required this.authRepository, 
     required this.chatRepository
   }) : super(AuthInitial()) {
-    on<UpdateLocalProfile>(_onUpdateLocalProfile);
+    // on<UpdateLocalProfile>(_onUpdateLocalProfile); // Removed legacy handler
     on<SignInRequested>(_onSignInRequested);
     on<LogoutRequested>(_onLogoutRequested);
+    on<AuthUserUpdated>(_onAuthUserUpdated);
+    
+    _userSubscription = authRepository.userUpdates.listen((user) {
+      add(AuthUserUpdated(user));
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _userSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onLogoutRequested(
@@ -32,30 +46,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthInitial());
   }
 
-  void _onUpdateLocalProfile(
-    UpdateLocalProfile event,
+  void _onAuthUserUpdated(
+    AuthUserUpdated event,
     Emitter<AuthState> emit,
   ) {
     if (state is SignInSuccess) {
       final currentResponse = (state as SignInSuccess).response;
-      // Define a copyWith method on SignInResponse or create new instance manually
-      // Since SignInResponse fields are final, we create a new one updating only fields that are provided
       
-      final updatedResponse = SignInResponse(
-        header: currentResponse.header,
-        userid: currentResponse.userid,
-        email: event.email ?? currentResponse.email,
-        nickname: event.nickname ?? currentResponse.nickname,
-        password: currentResponse.password, // Keep password (encrypted or whatever)
-        foregroundColor: event.foregroundColor ?? currentResponse.foregroundColor,
-        backgroundColor: event.backgroundColor ?? currentResponse.backgroundColor,
-        multilingualkey: currentResponse.multilingualkey,
-        text: currentResponse.text,
-        errorCode: currentResponse.errorCode,
-        sessionId: currentResponse.sessionId,
+      // Merge updates: Event response might have nulls for unchanged fields
+      final newResponse = event.response;
+      
+      final updatedResponse = currentResponse.copyWith(
+        email: newResponse.email, 
+        nickname: newResponse.nickname,
+        foregroundColor: newResponse.foregroundColor,
+        backgroundColor: newResponse.backgroundColor,
+        // language: newResponse.language // If we supported language in model
       );
       
-      // Update Chat Repository with new details
+      // Update Chat Repository
       chatRepository.initializeUser(
         updatedResponse.userid ?? 'Unknown',
         updatedResponse.nickname ?? 'Unknown',

@@ -30,6 +30,34 @@ class SignInResponse {
     this.sessionId,
   });
 
+  SignInResponse copyWith({
+    String? header,
+    String? userid,
+    String? email,
+    String? nickname,
+    String? password,
+    int? foregroundColor,
+    int? backgroundColor,
+    String? multilingualkey,
+    String? text,
+    String? errorCode,
+    String? sessionId,
+  }) {
+    return SignInResponse(
+      header: header ?? this.header,
+      userid: userid ?? this.userid,
+      email: email ?? this.email,
+      nickname: nickname ?? this.nickname,
+      password: password ?? this.password,
+      foregroundColor: foregroundColor ?? this.foregroundColor,
+      backgroundColor: backgroundColor ?? this.backgroundColor,
+      multilingualkey: multilingualkey ?? this.multilingualkey,
+      text: text ?? this.text,
+      errorCode: errorCode ?? this.errorCode,
+      sessionId: sessionId ?? this.sessionId,
+    );
+  }
+
   factory SignInResponse.fromJson(Map<String, dynamic> json) => _$SignInResponseFromJson(json);
   Map<String, dynamic> toJson() => _$SignInResponseToJson(this);
 }

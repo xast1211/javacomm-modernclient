@@ -15,11 +15,14 @@ import '../models/protocol/enums.dart';
 import '../models/protocol/usrlogin.dart';
 import '../models/protocol/token.dart';
 import '../models/protocol/update_user.dart';
+import '../models/protocol/protocol_request_factory.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final WebSocketService webSocketService;
   
+  final _userUpdatesController = StreamController<SignInResponse>.broadcast();
+
   // Storage for session keys
   encrypt.Key? _transactionAESKey;
   
@@ -69,149 +72,46 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   Future<Map<String, dynamic>> _performWebSocketLogin(String email, String password, {String? userid}) async {
-    // 2. Fetch RSA Public Key
-    final rsaPem = await remoteDataSource.getRsaPublicKey();
-    final rsaPublicKey = CryptoUtil.parsePublicKeyFromPem(rsaPem);
-
-    // 3. Fetch One-Time Token
-    final oneTimeToken = (await remoteDataSource.getToken()).trim();
-    print('OneTime Token: "$oneTimeToken"');
-
-    // 4. Generate AES Key
-    _transactionAESKey = CryptoUtil.createAESKey();
-
-    // 5. Create Token (Identity Payload)
-    final token = Token(
-      userid: userid ?? email, 
-      email: email,
-      password: password,
-      aes: CryptoUtil.base64FromAES(_transactionAESKey!),
-      onetime: oneTimeToken,
-    );
-    
-    print('Token JSON for Encryption: $token'); 
-
-    // 6. Encrypt Identity with RSA
-    final encryptedIdentity = CryptoUtil.encryptRSA(token.toString(), rsaPublicKey);
+    // 1. Prepare Encrypted Identity
+    final encryptedIdentity = await _prepareEncryptedIdentity(email, password, userid ?? email);
     print('Encrypted Identity (First 50 chars): ${encryptedIdentity.substring(0, min(50, encryptedIdentity.length))}...');
 
-    // 7. Connect WebSocket
+    // 2. Connect WebSocket
     final wsUrl = Uri(
       scheme: ApiConstants.scheme == 'https' ? 'wss' : 'ws',
       host: ApiConstants.domain,
       path: ApiConstants.wsContextPath,
     ).toString(); 
     
-    // Prepare to listen for Handshake BEFORE sending
+    // 3. Listen for Handshake
     final completer = Completer<Map<String, dynamic>>();
     StreamSubscription? subscription;
 
     subscription = webSocketService.messages.listen((message) {
-      // DEBUG: Log ALL incoming messages
-      print('WS Message received: Header=${message.header}, Command=${message.command}');
-        if (message.command == Command.USRLOGIN) {
-            if (message.header == Header.CONFIRM) {
-                print('WebSocket Login Confirmed!');
-                
-                // Extract data from DATASET
-                String? sessionId;
-                String? authoritativeUserId;
-                String? nickname;
-                int? foregroundColor;
-                int? backgroundColor;
-
-                if (message is UsrLogin) {
-                     sessionId = message.session;
-                     nickname = message.nickname;
-                     foregroundColor = message.foregroundColor;
-                     backgroundColor = message.backgroundColor;
-                     
-                     print('Session ID received: $sessionId');
-                     print('Nickname received: $nickname');
-                     print('Colors received: FG=$foregroundColor, BG=$backgroundColor');
-                     
-                     // Fix: IDENTITY is inside DATASET, not top-level
-                     final identityEncrypted = message.dataset['IDENTITY'] as String?;
-                     
-                     // Decrypt Identity to get authoritative UUID
-                     if (identityEncrypted != null && _transactionAESKey != null) {
-                        try {
-                           print('Attempting decryption. Identity length: ${identityEncrypted.length}');
-                           final decryptedBytes = CryptoUtil.decryptAESBytes(identityEncrypted, _transactionAESKey!);
-                           
-                           // Decode with allowMalformed to prevent crash on garbage bytes
-                           String decryptedString = utf8.decode(decryptedBytes, allowMalformed: true);
-                           // REMOVED UNSAFE PRINT: print('Decrypted String (Raw): ...');
-                           
-                           // Sanitize: Extract JSON object only
-                           final startIndex = decryptedString.indexOf('{');
-                           final endIndex = decryptedString.lastIndexOf('}');
-                           
-                           if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-                               decryptedString = decryptedString.substring(startIndex, endIndex + 1);
-                               print('Sanitized JSON length: ${decryptedString.length}');
-                           }
-                           
-                           final tokenMap = jsonDecode(decryptedString);
-                           final token = Token.fromJson(tokenMap);
-                           authoritativeUserId = token.userid;
-                           print('Decrypted Authoritative UserID: $authoritativeUserId');
-                           
-                           if (authoritativeUserId == null) {
-                             throw Exception('Decrypted token contains null USERID.');
-                           }
-                        } catch (e, stack) {
-                           print('Failed to decrypt identity: $e');
-                           // print(stack); // Stack trace is fine, but exception msg might contain binary if referenced
-                           
-                           // Fail loudly if we found identity but couldn't decrypt
-                           if (!completer.isCompleted) {
-                              completer.completeError('Decryption Failed: $e');
-                           }
-                           return;
-                        }
-                     } else {
-                        print('Missing Identity in DATASET or AES Key.');
-                     }
-                }
-                
-                if (!completer.isCompleted) {
-                   completer.complete({
-                     'sessionId': sessionId,
-                     'userid': authoritativeUserId,
-                     'nickname': nickname,
-                     'foregroundColor': foregroundColor,
-                     'backgroundColor': backgroundColor,
-                   });
-                }
-            } else if (message.header == Header.ERROR) {
-                 print('WebSocket Login Failed: ERROR header received');
-                 if (!completer.isCompleted) completer.completeError('Login Failed: Server returned ERROR');
-            }
-        }
+      if (message.command == Command.USRLOGIN) {
+          if (message.header == Header.CONFIRM && message is UsrLogin) {
+              _handleLoginConfirm(message, completer);
+          } else if (message.header == Header.ERROR) {
+               print('WebSocket Login Failed: ERROR header received');
+               if (!completer.isCompleted) completer.completeError('Login Failed: Server returned ERROR');
+          }
+      }
     });
 
     try {
         await webSocketService.connect(wsUrl);
-        
-        print('WebSocket connected. Preparing USRLOGIN...');
-        print('AGENT: ${_getPlatformAgent()}');
-        print('Identifying as: $email');
+        print('WebSocket connected. Sending USRLOGIN...');
 
-        // 8. Send USRLOGIN
-        final usrLogin = UsrLogin(
-        header: Header.REQUEST,
-        command: Command.USRLOGIN,
-        dataset: {
-            'AGENT': _getPlatformAgent(), 
-            'IDENTITY': encryptedIdentity,
-        },
+        // 4. Send USRLOGIN
+        final usrLogin = ProtocolRequestFactory.createLoginRequest(
+          agent: _getPlatformAgent(), 
+          encryptedIdentity: encryptedIdentity,
         );
         
         webSocketService.sendMessage(usrLogin);
 
-        // Wait for response with timeout
-        return await completer.future.timeout(const Duration(seconds: 10), onTimeout: () {
+        // 5. Wait for response
+        return await completer.future.timeout(ApiConstants.loginTimeout, onTimeout: () {
             throw TimeoutException('Login Handshake timed out');
         });
     } catch (e) {
@@ -219,6 +119,76 @@ class AuthRepositoryImpl implements AuthRepository {
     } finally {
         await subscription?.cancel();
     }
+  }
+
+  void _handleLoginConfirm(UsrLogin message, Completer<Map<String, dynamic>> completer) {
+      print('WebSocket Login Confirmed!');
+      
+      String? authoritativeUserId;
+      // Decrypt Identity to get authoritative UUID
+      final identityEncrypted = message.dataset['IDENTITY'] as String?;
+      
+      if (identityEncrypted != null && _transactionAESKey != null) {
+          try {
+             authoritativeUserId = _decryptIdentity(identityEncrypted, _transactionAESKey!);
+             print('Decrypted Authoritative UserID: $authoritativeUserId');
+          } catch (e) {
+             if (!completer.isCompleted) completer.completeError(e);
+             return;
+          }
+      }
+
+      if (!completer.isCompleted) {
+         completer.complete({
+           'sessionId': message.session,
+           'userid': authoritativeUserId,
+           'nickname': message.nickname,
+           'foregroundColor': message.foregroundColor,
+           'backgroundColor': message.backgroundColor,
+         });
+      }
+  }
+
+  Future<String> _prepareEncryptedIdentity(String email, String password, String userid) async {
+    // Fetch RSA and Token
+    final rsaPem = await remoteDataSource.getRsaPublicKey();
+    final rsaPublicKey = CryptoUtil.parsePublicKeyFromPem(rsaPem);
+    final oneTimeToken = (await remoteDataSource.getToken()).trim();
+
+    // Generate AES Key
+    _transactionAESKey = CryptoUtil.createAESKey();
+
+    // Create Token
+    final token = Token(
+      userid: userid, 
+      email: email,
+      password: password,
+      aes: CryptoUtil.base64FromAES(_transactionAESKey!),
+      onetime: oneTimeToken,
+    );
+    
+    return CryptoUtil.encryptRSA(token.toString(), rsaPublicKey);
+  }
+
+  String? _decryptIdentity(String encryptedIdentity, encrypt.Key aesKey) {
+      try {
+         final decryptedBytes = CryptoUtil.decryptAESBytes(encryptedIdentity, aesKey);
+         String decryptedString = utf8.decode(decryptedBytes, allowMalformed: true);
+         
+         // Sanitize: Extract JSON object only
+         final startIndex = decryptedString.indexOf('{');
+         final endIndex = decryptedString.lastIndexOf('}');
+         
+         if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+             decryptedString = decryptedString.substring(startIndex, endIndex + 1);
+         }
+         
+         final tokenMap = jsonDecode(decryptedString);
+         final token = Token.fromJson(tokenMap);
+         return token.userid;
+      } catch (e) {
+         throw Exception('Decryption Failed: $e');
+      }
   }
 
   @override
@@ -322,14 +292,12 @@ class AuthRepositoryImpl implements AuthRepository {
     print('Encrypted IDENTITY (first 50): ${encryptedIdentity.substring(0, encryptedIdentity.length > 50 ? 50 : encryptedIdentity.length)}...');
     
     // Construct UpdateUser message with DATASET containing all fields
-    final updateUserMsg = UpdateUser(
-      dataset: UpdateUserDataset(
-        identity: encryptedIdentity,
-        nickname: nickname,
-        foregroundColor: effectiveForegroundColor,
-        backgroundColor: effectiveBackgroundColor,
-        language: language,
-      ),
+    final updateUserMsg = ProtocolRequestFactory.createUpdateUserRequest(
+      encryptedIdentity: encryptedIdentity,
+      nickname: nickname,
+      foregroundColor: effectiveForegroundColor,
+      backgroundColor: effectiveBackgroundColor,
+      language: language,
     );
     
     print('UpdateUser message created');
@@ -356,6 +324,14 @@ class AuthRepositoryImpl implements AuthRepository {
             if (foregroundColor != null) _currentForegroundColor = foregroundColor;
             if (backgroundColor != null) _currentBackgroundColor = backgroundColor;
             
+            // EMIT UPDATE
+            _emitUserUpdate(
+                nickname: nickname,
+                foregroundColor: foregroundColor,
+                backgroundColor: backgroundColor,
+                language: language
+            );
+            
             if (!responseCompleter.isCompleted) {
               responseCompleter.complete();
             }
@@ -378,7 +354,7 @@ class AuthRepositoryImpl implements AuthRepository {
     // Wait for response (with timeout)
     try {
       await responseCompleter.future.timeout(
-        const Duration(seconds: 5),
+        ApiConstants.updateProfileTimeout,
         onTimeout: () {
           print('⚠️ UPDATEUSER response timeout - no response from server');
           subscription?.cancel();
@@ -433,5 +409,31 @@ class AuthRepositoryImpl implements AuthRepository {
       case TargetPlatform.fuchsia:
         return 'Desktop';
     }
+  }
+
+  @override
+  Stream<SignInResponse> get userUpdates => _userUpdatesController.stream;
+
+  void _emitUserUpdate({String? nickname, int? foregroundColor, int? backgroundColor, String? language}) {
+      // Construct updated response from current stored state
+      final response = SignInResponse(
+          header: 'UPDATE', // Internal header
+          userid: _currentUserId,
+          email: _currentEmail,
+          password: _currentPassword,
+          nickname: nickname, // If null, consumer might keep old value, but here we should ideally have the full state. 
+                              // Since we don't store nickname in class fields (only in the response which is in Bloc),
+                              // we rely on the Bloc to merge, OR we should store nickname in Rep too.
+                              // For now, let's pass what we have.
+                              // Improvements: Store 'nickname' in AuthRepositoryImpl too.
+          foregroundColor: foregroundColor ?? _currentForegroundColor,
+          backgroundColor: backgroundColor ?? _currentBackgroundColor,
+          // We need sessionId for the response object, but we don't store it in _current* vars besides maybe logic.
+          // Let's rely on Bloc's copyWith for fields we don't send here? 
+          // Actually, if we emit SignInResponse, we should try to be complete.
+          // Refactor: Add _currentNickname, _currentSessionId to AuthRepositoryImpl.
+          sessionId: null, // Bloc should handle merging if null
+      );
+      _userUpdatesController.add(response);
   }
 }

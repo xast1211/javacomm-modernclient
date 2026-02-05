@@ -226,12 +226,7 @@ class _SettingsPageState extends State<SettingsPage> {
       body: BlocListener<SettingsBloc, SettingsState>(
         listener: (context, state) {
            if (state is SettingsSuccess) {
-               context.read<AuthBloc>().add(UpdateLocalProfile(
-                  nickname: _nicknameController.text,
-                  email: _emailController.text,
-                  foregroundColor: _fgColor,
-                  backgroundColor: _bgColor,
-               ));
+               // AuthBloc updates automatically via Repository Stream!
                ScaffoldMessenger.of(context).showSnackBar(
                    SnackBar(content: Text(AppLocalizations.of(context)!.profileUpdatedSuccess)),
                );
@@ -254,8 +249,11 @@ class _SettingsPageState extends State<SettingsPage> {
                      labelText: AppLocalizations.of(context)!.userIdLabel,
                      prefixIcon: const Icon(Icons.person),
                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                     filled: true,
+                     fillColor: Colors.grey.withOpacity(0.1), // Explicit gray background
                    ),
                    readOnly: true,
+                   enabled: false, // Disables interaction and usually grays out text/border
                ),
                const SizedBox(height: 16),
                
@@ -268,7 +266,14 @@ class _SettingsPageState extends State<SettingsPage> {
                
                TextFormField(
                    controller: _emailController,
-                   decoration: InputDecoration(labelText: AppLocalizations.of(context)!.emailLabel, prefixIcon: const Icon(Icons.email)),
+                   decoration: InputDecoration(
+                     labelText: AppLocalizations.of(context)!.emailLabel, 
+                     prefixIcon: const Icon(Icons.email),
+                     filled: true,
+                     fillColor: Colors.grey.withOpacity(0.1),
+                   ),
+                   readOnly: true,
+                   enabled: false,
                    validator: (value) => (value == null || value.isEmpty) ? AppLocalizations.of(context)!.validationRequired : null,
                ),
                const SizedBox(height: 24),

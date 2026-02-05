@@ -42,3 +42,15 @@ class UpdateLocalProfile extends AuthEvent {
 class LogoutRequested extends AuthEvent {
   const LogoutRequested();
 }
+
+class AuthUserUpdated extends AuthEvent {
+  final dynamic response; // Using dynamic or SignInResponse if imported
+  // Ideally import SignInResponse in auth_event.dart or keep it loose.
+  // Using dynamic to avoid circular dep if models depend on bloc (unlikely).
+  // Better: import '../item_that_has_response.dart'
+  // But strictly: AuthEvent needs to know about SignInResponse.
+  const AuthUserUpdated(this.response);
+  
+  @override
+  List<Object> get props => [response];
+}

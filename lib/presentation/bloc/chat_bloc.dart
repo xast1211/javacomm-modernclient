@@ -297,7 +297,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   void _onRejectIncomingCall(RejectIncomingCall event, Emitter<ChatState> emit) {
        print('ChatBloc: User Rejected Call.');
-       // Just reset state
+       
+       if (state.pendingCallRequest != null) {
+           chatRepository.rejectCallRemoteUser(state.pendingCallRequest!);
+       }
+
+       // Reset state
        emit(state.copyWith(
            status: ChatConnectionStatus.initial,
            pendingCallRequest: null,

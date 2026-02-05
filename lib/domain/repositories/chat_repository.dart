@@ -19,6 +19,7 @@ abstract class ChatRepository {
   Future<void> sendLeavePrivateChat(String goneSessionId);
   String acceptPrivateChat(CallPrivateChat request);
   String acceptCallRemoteUser(CallRemoteUser request);
+  void rejectCallRemoteUser(CallRemoteUser request);
   void initializeUser(String userId, String nickname, {String? sessionId, int? foregroundColor, int? backgroundColor});
   void sendMessage(PrivateMessage message);
 }

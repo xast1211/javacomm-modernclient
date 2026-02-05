@@ -27,7 +27,7 @@ class ThemeRepository {
   };
 
   Future<AppThemeType?> fetchUserTheme(String userId) async {
-    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/read/data/$userId');
+    final url = Uri.parse('${ApiConstants.restBaseUrl}${ApiConstants.readUserData}/$userId');
     try {
       final response = await http.get(url);
 
@@ -51,7 +51,7 @@ class ThemeRepository {
   }
 
   Future<bool> updateUserTheme(String userId, AppThemeType theme) async {
-    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/write/eis');
+    final url = Uri.parse('${ApiConstants.restBaseUrl}${ApiConstants.writeTheme}');
     final helado = _localToServerMap[theme];
     
     if (helado == null) return false;
@@ -73,7 +73,7 @@ class ThemeRepository {
   }
 
   Future<String?> fetchUserLanguage(String userId) async {
-    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/read/data/$userId');
+    final url = Uri.parse('${ApiConstants.restBaseUrl}${ApiConstants.readUserData}/$userId');
     print('ThemeRepo: Fetching language for $userId from $url');
     try {
       final response = await http.get(url);
@@ -97,7 +97,7 @@ class ThemeRepository {
   Future<bool> updateUserLanguage(String userId, String languageCode) async {
     // New Endpoint: PUT /javacommserver/user/write/language/{language}/{userid}
     // Server expects Lowercase Enum (de, en, es) - verified in Language.java
-    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/write/language/${languageCode.toLowerCase()}/$userId');
+    final url = Uri.parse('${ApiConstants.restBaseUrl}${ApiConstants.writeLanguage}/${languageCode.toLowerCase()}/$userId');
     print('ThemeRepo: Updating language for $userId to ${languageCode.toLowerCase()} via $url');
     try {
       final response = await http.put(

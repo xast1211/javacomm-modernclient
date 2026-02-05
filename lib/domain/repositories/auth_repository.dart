@@ -6,4 +6,5 @@ abstract class AuthRepository {
   Future<String> getToken();
   Future<void> updateProfile(String userId, {String? nickname, String? email, String? password, int? foregroundColor, int? backgroundColor, String? language});
   Future<void> disconnect();
+  Stream<SignInResponse> get userUpdates;
 }

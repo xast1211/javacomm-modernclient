@@ -13,6 +13,7 @@ import '../models/protocol/message.dart';
 import '../models/protocol/usrlogin.dart';
 import '../models/protocol/keepalive.dart';
 import '../models/protocol/call_remote_user.dart';
+import '../models/protocol/protocol_request_factory.dart';
 import '../../core/debug/global_debug.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
@@ -61,13 +62,10 @@ class ChatRepositoryImpl implements ChatRepository {
     
     // Send initial KeepAlive immediately
     if (mySessionId != null) {
-         final keepAlive = KeepAlive(
-            header: Header.REQUEST, 
-            command: Command.KEEPALIVE, 
-            dataset: {'SESSIONID': mySessionId},
+         final keepAlive = ProtocolRequestFactory.createKeepAliveRequest(
+            sessionId: mySessionId!
           );
           print('Sending Initial KeepAlive');
-          webSocketService.sendMessage(keepAlive);
           webSocketService.sendMessage(keepAlive);
     }
     
@@ -96,7 +94,7 @@ class ChatRepositoryImpl implements ChatRepository {
     _keepAliveTimer = Timer.periodic(const Duration(seconds: 40), (timer) async {
       if (myUserId != null) {
         try {
-          final url = Uri.parse('${ApiConstants.restBaseUrl}/user/write/keepalive/$myUserId');
+          final url = Uri.parse('${ApiConstants.restBaseUrl}${ApiConstants.writeKeepAlive}/$myUserId');
           // No body required by server, but PUT usually expects one. JChat sends empty string.
           final response = await http.put(
              url, 
@@ -175,10 +173,8 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   void requestOnlineUsers() {
-    final msg = UserOnlineList(
-      header: Header.REQUEST,
-      command: Command.USERONLINELIST,
-      dataset: {'USERID': myUserId ?? ''},
+    final msg = ProtocolRequestFactory.createOnlineUsersRequest(
+      userId: myUserId ?? ''
     );
     webSocketService.sendMessage(msg);
   }
@@ -196,42 +192,26 @@ class ChatRepositoryImpl implements ChatRepository {
     // RESTORED: Use CALLPRIVATECHAT with Client-Side UUID.
     // This worked previously according to user.
     
-    final sessionId = const Uuid().v4();
-    
-    final msg = CallPrivateChat(
-      header: Header.REQUEST,
-      command: Command.CALLPRIVATECHAT,
-      dataset: {
-        'SENDER_UID': myUserId ?? '',
-        'RECIPIENT_UID': recipientUid,
-        'LOCAL_NICKNAME': myNickname ?? '',
-        'LOCAL_SESSIONID': sessionId, // Generated ID
-        'REMOTE_NICKNAME': recipientNickname,
-        'REMOTE_SESSIONID': null, 
-      },
+    final msg = ProtocolRequestFactory.createCallPrivateChatRequest(
+       senderUid: myUserId!,
+       senderNickname: myNickname ?? '',
+       recipientUid: recipientUid,
+       recipientNickname: recipientNickname
     );
     webSocketService.sendMessage(msg);
   }
 
   @override
   Future<void> sendPrivateMessage(String recipientUid, String message, {String? localSessionId, String? remoteSessionId}) async {
-     final msg = PrivateMessage(
-       header: Header.REQUEST,
-       command: Command.PRIVATEMESSAGE,
-       dataset: {
-          'SENDER_UID': myUserId ?? '',
-          'MESSAGE': message,
-          'DATETIME': DateTime.now().millisecondsSinceEpoch,
-          'CHATUSER': {
-             'USERID': myUserId ?? '',
-             'NICKNAME': myNickname ?? '',
-             'FOREGROUND_COLOR': myForegroundColor ?? 0xFF000000, 
-             'BACKGROUND_COLOR': myBackgroundColor ?? 0xFFFFFFFF, 
-          },
-          // JChat checks for this ID to match the session.
-          'LOCAL_SESSIONID': localSessionId ?? '',
-          'REMOTE_SESSIONID': remoteSessionId ?? '', // Mandatory. Must match Peer's Session ID.
-       }
+     final msg = ProtocolRequestFactory.createPrivateMessageRequest(
+             senderUid: myUserId!,
+             messageContent: message,
+             timestamp: DateTime.now().millisecondsSinceEpoch,
+             remoteSessionId: remoteSessionId ?? '',
+             localSessionId: localSessionId,
+             senderNickname: myNickname ?? '',
+             senderFgColor: myForegroundColor,
+             senderBgColor: myBackgroundColor
      );
      webSocketService.sendMessage(msg);
   }
@@ -243,20 +223,14 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   String acceptPrivateChat(CallPrivateChat request) {
-     final localChatId = const Uuid().v4();
-  
-     final msg = CallPrivateChat(
-      header: Header.CONFIRM,
-      command: Command.CALLPRIVATECHAT,
-      dataset: {
-        'SENDER_UID': myUserId ?? '',
-        'RECIPIENT_UID': request.senderUid,
-        'LOCAL_NICKNAME': myNickname ?? '',
-        'REMOTE_NICKNAME': request.localNickname,
-        'LOCAL_SESSIONID': localChatId, // Send NEW Chat Session ID
-        'REMOTE_SESSIONID': request.localSessionId,
-      }
+     final msg = ProtocolRequestFactory.createCallPrivateChatConfirm(
+        senderUid: myUserId!,
+        senderNickname: myNickname ?? '',
+        recipientUid: request.senderUid,
+        recipientNickname: request.localNickname ?? '',
+        remoteSessionId: request.localSessionId ?? ''
     );
+    final localChatId = msg.localSessionId ?? '';
     webSocketService.sendMessage(msg);
     return localChatId;
   }
@@ -267,19 +241,18 @@ class ChatRepositoryImpl implements ChatRepository {
      // LocalSessionId = My (Flutter) WebSocket ID (as known by Server)
      // RemoteSessionId = Peer (JChat) WebSocket ID
      
+     // LocalSessionId = My (Flutter) WebSocket ID (as known by Server)
+     // RemoteSessionId = Peer (JChat) WebSocket ID
+     
      final mySessionId = request.localSessionId ?? '';
      final peerSessionId = request.remoteSessionId ?? '';
   
-     final msg = CallRemoteUser(
-      header: Header.CONFIRM,
-      command: Command.CALLREMOTEUSER,
-      dataset: {
-        'LOCAL_NICKNAME': myNickname ?? '', 
-        'LOCAL_SESSIONID': peerSessionId, // Set Local to Peer (Caller) to route response to them
-        'REMOTE_NICKNAME': request.localNickname, 
-        'REMOTE_SESSIONID': mySessionId, // Set Remote to Me (Callee)
-      }
-    );
+     final msg = ProtocolRequestFactory.createCallRemoteUserConfirm(
+        myNickname: myNickname ?? '',
+        mySessionId: mySessionId,
+        peerNickname: request.localNickname ?? '',
+        peerSessionId: peerSessionId
+     );
     
     print('Repository: Sending CALLREMOTEUSER CONFIRM: ${msg.toJson()}');
     webSocketService.sendMessage(msg);
@@ -287,13 +260,25 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  void rejectCallRemoteUser(CallRemoteUser request) {
+     final mySessionId = request.localSessionId ?? '';
+     final peerSessionId = request.remoteSessionId ?? '';
+  
+     final msg = ProtocolRequestFactory.createCallRemoteUserReject(
+        myNickname: myNickname ?? '',
+        mySessionId: mySessionId,
+        peerNickname: request.localNickname ?? '',
+        peerSessionId: peerSessionId
+     );
+    
+    print('Repository: Sending CALLREMOTEUSER REJECT (RESPONSE): ${msg.toJson()}');
+    webSocketService.sendMessage(msg);
+  }
+
+  @override
   Future<void> sendLeavePrivateChat(String goneSessionId) async {
-      final message = LeavePrivateChat(
-        header: Header.REQUEST,
-        command: Command.LEAVEPRIVATECHAT,
-        dataset: {
-           'GONE_SESSIONID': goneSessionId
-        }
+      final message = ProtocolRequestFactory.createLeavePrivateChatRequest(
+        goneSessionId: goneSessionId
       );
       
       print('Repository: Sending LEAVEPRIVATECHAT: ${message.toJson()}');
