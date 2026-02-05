@@ -39,3 +39,6 @@ class UpdateLocalProfile extends AuthEvent {
     if (backgroundColor != null) backgroundColor!,
   ];
 }
+class LogoutRequested extends AuthEvent {
+  const LogoutRequested();
+}

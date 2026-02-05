@@ -15,6 +15,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }) : super(AuthInitial()) {
     on<UpdateLocalProfile>(_onUpdateLocalProfile);
     on<SignInRequested>(_onSignInRequested);
+    on<LogoutRequested>(_onLogoutRequested);
+  }
+
+  Future<void> _onLogoutRequested(
+    LogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    // 1. Disconnect WebSocket
+    await authRepository.disconnect();
+    
+    // 2. Clear Session Data in Repositories if needed
+    // (ChatRepository might need a clear method, but initializedUser overwrites anyway)
+    
+    // 3. Emit Initial State to trigger Router Redirect
+    emit(AuthInitial());
   }
 
   void _onUpdateLocalProfile(

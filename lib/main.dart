@@ -10,6 +10,7 @@ import 'core/theme/theme_cubit.dart';
 import 'core/theme/language_cubit.dart';
 import 'core/constants/api_constants.dart';
 import 'core/network/websocket_service.dart';
+import 'core/utils/go_router_refresh_stream.dart'; // Add import
 
 import 'data/datasources/auth_remote_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
@@ -20,6 +21,7 @@ import 'domain/repositories/auth_repository.dart';
 import 'domain/repositories/chat_repository.dart';
 
 import 'presentation/bloc/auth_bloc.dart';
+import 'presentation/bloc/auth_state.dart';
 import 'presentation/bloc/user_list_bloc.dart';
 import 'presentation/bloc/chat_bloc.dart';
 import 'presentation/bloc/settings_bloc.dart';
@@ -48,33 +50,54 @@ final _chatRepository = ChatRepositoryImpl(
   webSocketService: _webSocketService,
 );
 
-final _router = GoRouter(
-  initialLocation: '/',
-  routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const LoginPage(),
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (context, state) => const HomePage(),
-    ),
-    GoRoute(
-      path: '/chat',
-      builder: (context, state) {
-        final extras = state.extra as Map<String, dynamic>;
-        return ChatPage(
-          recipientUid: extras['uid'], 
-          recipientNickname: extras['nick']
-        );
-      },
-    ),
-    GoRoute(
-      path: '/settings',
-      builder: (context, state) => const SettingsPage(),
-    ),
-  ],
-);
+// Router needs to be created after AuthBloc is available
+GoRouter _createRouter(BuildContext context) {
+  return GoRouter(
+    initialLocation: '/',
+    refreshListenable: GoRouterRefreshStream(context.read<AuthBloc>().stream),
+    redirect: (BuildContext context, GoRouterState state) {
+      final authState = context.read<AuthBloc>().state;
+      final isLoggedIn = authState is SignInSuccess;
+      final isGoingToLogin = state.matchedLocation == '/';
+
+      // If not logged in and trying to access protected route, redirect to login
+      if (!isLoggedIn && !isGoingToLogin) {
+        return '/';
+      }
+
+      // If logged in and on login page, redirect to home
+      if (isLoggedIn && isGoingToLogin) {
+        return '/home';
+      }
+
+      return null; // No redirect needed
+    },
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const HomePage(),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) {
+          final extras = state.extra as Map<String, dynamic>;
+          return ChatPage(
+            recipientUid: extras['uid'], 
+            recipientNickname: extras['nick']
+          );
+        },
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsPage(),
+      ),
+    ],
+  );
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -131,7 +154,7 @@ class MyApp extends StatelessWidget {
                     Locale('en'), // English
                     Locale('es'), // Spanish
                   ],
-                  routerConfig: _router,
+                  routerConfig: _createRouter(context),
                 );
               },
             );

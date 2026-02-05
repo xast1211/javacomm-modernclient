@@ -400,7 +400,16 @@ class AuthRepositoryImpl implements AuthRepository {
     // JChat seems to wait for property change, which implies async confirmation.
     // We will handle confirmation in the BLoC by listening to the stream if needed, 
     // or just assume success if no error.
+    // or just assume success if no error.
   
+  @override
+  Future<void> disconnect() async {
+      webSocketService.disconnect();
+      _transactionAESKey = null;
+      _currentUserId = null;
+      // ... clear other current user data if needed
+  }
+
   /// Returns platform-specific agent string
   /// Web → 'Browser'
   /// Android/iOS → 'Smartphone'

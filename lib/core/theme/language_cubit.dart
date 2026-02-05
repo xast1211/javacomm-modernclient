@@ -53,8 +53,17 @@ class LanguageCubit extends Cubit<Locale> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language_code', locale.languageCode);
     
-    // Note: Language is stored locally only (like JChat's config.xml)
-    // Server does not currently support LANGUAGE in UPDATEUSER command
+    // Server persist if logged in
+    final userId = _userId;
+    if (userId != null) {
+       print('LanguageCubit: Saving language ${locale.languageCode} for user $userId to server...');
+       final success = await _themeRepository.updateUserLanguage(userId, locale.languageCode);
+       if (success) {
+          print('LanguageCubit: Server updated successfully.');
+       } else {
+          print('LanguageCubit: Server update failed.');
+       }
+    }
   }
 
   bool _isValidLocale(String code) {

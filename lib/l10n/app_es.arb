@@ -47,5 +47,6 @@
   "newPasswordLabel": "Nueva contraseña",
   "confirmPasswordLabel": "Confirmar contraseña",
   "validationPasswordMismatch": "No coinciden",
-  "saveChangesButton": "Guardar cambios"
+  "saveChangesButton": "Guardar cambios",
+  "logoutButton": "Cerrar sesión"
 }

@@ -9,6 +9,7 @@ import '../../core/theme/language_cubit.dart';
 import '../../core/theme/app_theme.dart'; // Ensure AppThemeType is available if not exported by cubit
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
+import '../bloc/auth_event.dart'; // Add import
 import '../bloc/user_list_bloc.dart';
 
 class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -131,6 +132,15 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
+          ),
+
+          // Logout
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: AppLocalizations.of(context)!.logoutButton,
+            onPressed: () {
+               context.read<AuthBloc>().add(const LogoutRequested());
+            },
           ),
 
           // Refresh (Only if requested, e.g. on HomePage)

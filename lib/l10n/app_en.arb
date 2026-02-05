@@ -47,5 +47,6 @@
   "newPasswordLabel": "New Password",
   "confirmPasswordLabel": "Confirm Password",
   "validationPasswordMismatch": "Mismatch",
-  "saveChangesButton": "Save Changes"
+  "saveChangesButton": "Save Changes",
+  "logoutButton": "Logout"
 }

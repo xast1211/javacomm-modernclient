@@ -95,19 +95,21 @@ class ThemeRepository {
   }
 
   Future<bool> updateUserLanguage(String userId, String languageCode) async {
-    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/write/language');
+    // New Endpoint: PUT /javacommserver/user/write/language/{language}/{userid}
+    final url = Uri.parse('${ApiConstants.restBaseUrl}/user/write/language/$languageCode/$userId');
     print('ThemeRepo: Updating language for $userId to $languageCode via $url');
     try {
-      final response = await http.post(
+      final response = await http.put(
         url,
-        body: {
-          'userid': userId,
-          'language': languageCode,
+        headers: {
+           'Content-Type': 'text/plain', // PUT usually requires content-type even if body is empty? Or maybe not.
+           // Server produces text/plain, maybe consumes nothing? JAX-RS path params usually don't need body.
         },
       );
       print('ThemeRepo: Update response ${response.statusCode}');
 
-      return response.statusCode == 204 || response.statusCode == 200;
+      // Returns 200 or 204. Server returns the language enum as string.
+      return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       print('ThemeRepo: Error updating language: $e');
       return false;
