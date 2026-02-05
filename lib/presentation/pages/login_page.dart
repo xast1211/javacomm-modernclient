@@ -43,9 +43,6 @@ class _LoginPageState extends State<LoginPage> {
   
   Future<void> _tryBiometricLogin({bool auto = false}) async {
     if (!_canCheckBiometrics && auto) return;
-    
-    // Only auto-login if explicitly requested or maybe just show button?
-    // User requested "can I unlock with...?" so existing users expect a button or prompt.
   }
   
   Future<void> _onBiometricPress() async {
@@ -56,7 +53,6 @@ class _LoginPageState extends State<LoginPage> {
         final email = creds['email']!;
         final password = creds['password']!;
         
-        // Populate controllers so listener logic works correctly
         _emailController.text = email;
         _passwordController.text = password;
         
@@ -87,40 +83,12 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     
+    // Background Color from Reference (Dark Olive - Adjusted)
+    final backgroundColor = const Color(0xFF2E2B11); 
+    final textColor = const Color(0xFFF0E6D2); // Light beige/white for contrast
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.loginTitle),
-        actions: [
-          BlocBuilder<LanguageCubit, Locale>(
-            builder: (context, locale) {
-              return PopupMenuButton<Locale>(
-                icon: const Icon(Icons.language),
-                tooltip: l10n.languageTooltip,
-                onSelected: (Locale result) {
-                  context.read<LanguageCubit>().changeLanguage(result);
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
-                  CheckedPopupMenuItem<Locale>(
-                    value: const Locale('de'),
-                    checked: locale.languageCode == 'de',
-                    child: Text(l10n.languageDeutsch),
-                  ),
-                  CheckedPopupMenuItem<Locale>(
-                    value: const Locale('en'),
-                    checked: locale.languageCode == 'en',
-                    child: Text(l10n.languageEnglish),
-                  ),
-                  CheckedPopupMenuItem<Locale>(
-                    value: const Locale('es'),
-                    checked: locale.languageCode == 'es',
-                    child: Text(l10n.languageEspanol),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
+      backgroundColor: backgroundColor,
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) async {
           if (state is AuthFailure) {
@@ -132,7 +100,6 @@ class _LoginPageState extends State<LoginPage> {
                SnackBar(content: Text(l10n.signInSuccessful)),
             );
             
-            // Check if we need to update/overwrite biometric credentials
             final currentEmail = _emailController.text;
             final currentPass = _passwordController.text;
             
@@ -143,7 +110,6 @@ class _LoginPageState extends State<LoginPage> {
                  if (storedCreds != null) {
                      final storedEmail = storedCreds['email'];
                      if (storedEmail != null && storedEmail != currentEmail) {
-                         // Different user! Prompt overwrite.
                          if (context.mounted) {
                              final confirmUrl = await showDialog<bool>(
                                 context: context,
@@ -151,14 +117,8 @@ class _LoginPageState extends State<LoginPage> {
                                     title: const Text('Biometrie update'),
                                     content: Text('Es sind Daten für "$storedEmail" gespeichert.\nMöchten Sie diese mit "$currentEmail" überschreiben?'),
                                     actions: [
-                                        TextButton(
-                                            onPressed: () => Navigator.pop(ctx, false),
-                                            child: const Text('Nein'),
-                                        ),
-                                        TextButton(
-                                            onPressed: () => Navigator.pop(ctx, true),
-                                            child: const Text('Ja, überschreiben'),
-                                        ),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nein')),
+                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ja, überschreiben')),
                                     ],
                                 ),
                              );
@@ -174,20 +134,13 @@ class _LoginPageState extends State<LoginPage> {
             
             if (!context.mounted) return;
 
-            // Initialize Chat Repos
             final userId = state.response.userid ?? l10n.unknownUser;
             final nickname = state.response.nickname ?? l10n.guestUser;
             final sessionId = state.response.sessionId;
             
             context.read<ChatRepository>().initializeUser(userId, nickname, sessionId: sessionId);
-            
-            // Load Saved Theme
             context.read<ThemeCubit>().loadSavedTheme(userId: userId);
-            
-            // Load Saved Language
             context.read<LanguageCubit>().loadSavedLanguage(userId: userId);
-
-            // Navigate to Home
             context.go('/home');
           }
         },
@@ -196,67 +149,187 @@ class _LoginPageState extends State<LoginPage> {
             return const Center(child: CircularProgressIndicator());
           }
           
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                   TextFormField(
-                     controller: _emailController,
-                     decoration: InputDecoration(
-                       labelText: l10n.loginUsernameHint, // Or Email hint
-                       hintText: l10n.emailHintExample,
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                     // Logo
+                     Image.asset(
+                       'assets/images/dukeplug.png',
+                       height: 120, // Adjust size as needed
                      ),
-                     validator: (value) {
-                       if (value == null || value.isEmpty) {
-                         return l10n.validationEmailRequired;
-                       }
-                       return null;
-                     },
-                   ),
-                   const SizedBox(height: 16),
-                   TextFormField(
-                     controller: _passwordController,
-                     decoration: InputDecoration(
-                       labelText: l10n.loginPasswordHint,
-                       hintText: '********',
-                     ),
-                     obscureText: true,
-                     textInputAction: TextInputAction.done,
-                     onFieldSubmitted: (_) => _onLogin(),
-                     validator: (value) {
-                       if (value == null || value.isEmpty) {
-                         return l10n.validationPasswordRequired;
-                       }
-                       return null;
-                     },
-                   ),
-                   const SizedBox(height: 24),
-                   Row(
-                     mainAxisAlignment: MainAxisAlignment.center,
-                     children: [
-                       ElevatedButton(
-                         onPressed: _onLogin,
-                         child: Text(l10n.loginButton),
+                     const SizedBox(height: 40),
+                     
+                     // Language Row
+                     _buildInputRow(
+                       label: l10n.labelLanguage,
+                       textColor: textColor,
+                       child: Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 12),
+                         decoration: BoxDecoration(
+                           color: Colors.white, // Requested white background
+                           borderRadius: BorderRadius.circular(4),
+                         ),
+                         child: BlocBuilder<LanguageCubit, Locale>(
+                           builder: (context, locale) {
+                             return DropdownButtonHideUnderline(
+                               child: DropdownButton<Locale>(
+                                 value: locale,
+                                 isExpanded: true,
+                                 icon: const Icon(Icons.arrow_drop_down, color: Colors.green), // Green arrow like image? Or standard
+                                 dropdownColor: Colors.white,
+                                 items: [
+                                   DropdownMenuItem(value: const Locale('de'), child: Text(l10n.languageDeutsch)),
+                                   DropdownMenuItem(value: const Locale('en'), child: Text(l10n.languageEnglish)),
+                                   DropdownMenuItem(value: const Locale('es'), child: Text(l10n.languageEspanol)),
+                                 ],
+                                 onChanged: (Locale? newLocale) {
+                                   if (newLocale != null) {
+                                     context.read<LanguageCubit>().changeLanguage(newLocale);
+                                   }
+                                 },
+                               ),
+                             );
+                           },
+                         ),
                        ),
-                       if (_canCheckBiometrics) ...[
-                         const SizedBox(width: 16),
-                         IconButton(
-                           icon: const Icon(Icons.fingerprint, size: 32),
-                           tooltip: 'Biometric Login',
-                           onPressed: _onBiometricPress,
-                         )
-                       ]
-                     ],
-                   ),
-                ],
+                     ),
+                     const SizedBox(height: 16),
+                     
+                     // Email Row
+                     _buildInputRow(
+                       label: l10n.labelEmailOrUser,
+                       textColor: textColor,
+                       child: Container(
+                         decoration: BoxDecoration(
+                           color: Colors.white,
+                           borderRadius: BorderRadius.circular(4),
+                           border: Border.all(color: Colors.blueAccent, width: 2), // Blue border like image?
+                         ),
+                         child: TextFormField(
+                           controller: _emailController,
+                           decoration: const InputDecoration(
+                             border: InputBorder.none,
+                             contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                             isDense: true,
+                           ),
+                           style: const TextStyle(color: Colors.black),
+                           validator: (value) {
+                             if (value == null || value.isEmpty) return l10n.validationEmailRequired;
+                             return null;
+                           },
+                         ),
+                       ),
+                     ),
+                     const SizedBox(height: 16),
+                     
+                     // Password Row
+                     _buildInputRow(
+                       label: l10n.labelPassword,
+                       textColor: textColor,
+                       child: Container(
+                         decoration: BoxDecoration(
+                           color: Colors.white,
+                           borderRadius: BorderRadius.circular(4),
+                         ),
+                         child: TextFormField(
+                           controller: _passwordController,
+                           obscureText: true,
+                           textInputAction: TextInputAction.done,
+                           onFieldSubmitted: (_) => _onLogin(),
+                           decoration: const InputDecoration(
+                             border: InputBorder.none,
+                             contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                             isDense: true,
+                             hintText: '********',
+                           ),
+                           style: const TextStyle(color: Colors.black),
+                           validator: (value) {
+                             if (value == null || value.isEmpty) return l10n.validationPasswordRequired;
+                             return null;
+                           },
+                         ),
+                       ),
+                     ),
+                     const SizedBox(height: 40),
+                     
+                     // Confidentiality Note
+                     Row(
+                       mainAxisAlignment: MainAxisAlignment.center,
+                       children: [
+                         Text(
+                           l10n.confidentialityNote,
+                           style: TextStyle(color: textColor, fontSize: 14),
+                         ),
+                         const SizedBox(width: 8),
+                         Image.asset(
+                           'assets/images/chip.png',
+                           height: 24,
+                           width: 24,
+                         ),
+                       ],
+                     ),
+                     const SizedBox(height: 30),
+                     
+                     // Login Button (Thumb Up)
+                     ElevatedButton.icon(
+                       onPressed: _onLogin,
+                       icon: Image.asset(
+                         'assets/images/thumb_up.png',
+                         height: 24,
+                         width: 24, 
+                       ),
+                       label: Text(
+                         l10n.loginButton,
+                         style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                       ),
+                       style: ElevatedButton.styleFrom(
+                         backgroundColor: backgroundColor, // Match page background
+                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                         shape: RoundedRectangleBorder(
+                           borderRadius: BorderRadius.circular(8), // Rounded corners
+                           side: const BorderSide(color: Colors.white, width: 1), // White border
+                         ),
+                       ),
+                     ),
+                     
+                     if (_canCheckBiometrics) ...[
+                       const SizedBox(height: 20),
+                       IconButton(
+                         icon: const Icon(Icons.fingerprint, size: 40, color: Colors.white),
+                         tooltip: 'Biometric Login',
+                         onPressed: _onBiometricPress,
+                       )
+                     ]
+                  ],
+                ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildInputRow({required String label, required Color textColor, required Widget child}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 120, // Fixed width for labels to align
+          child: Text(
+            label,
+            style: TextStyle(color: textColor, fontSize: 16),
+          ),
+        ),
+        Expanded(
+          child: child,
+        ),
+      ],
     );
   }
 }

@@ -50,5 +50,9 @@
   "saveChangesButton": "Guardar cambios",
   "appTitle": "Conversación privada 1:1",
   "loggedInStatus": "conectado",
-  "logoutButton": "Cerrar sesión"
+  "logoutButton": "Cerrar sesión",
+  "labelLanguage": "Idioma",
+  "labelEmailOrUser": "Correo o ID de usuario",
+  "labelPassword": "Contraseña",
+  "confidentialityNote": "Las conversaciones son confidenciales."
 }

@@ -50,5 +50,9 @@
   "saveChangesButton": "Änderungen speichern",
   "appTitle": "1:1 Privatgespräch",
   "loggedInStatus": "angemeldet",
-  "logoutButton": "Abmelden"
+  "logoutButton": "Abmelden",
+  "labelLanguage": "Sprache",
+  "labelEmailOrUser": "E-Mail oder User ID",
+  "labelPassword": "Passwort",
+  "confidentialityNote": "Gespräche bleiben vertraulich."
 }

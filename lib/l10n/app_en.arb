@@ -50,5 +50,9 @@
   "saveChangesButton": "Save Changes",
   "appTitle": "1:1 Private Conversation",
   "loggedInStatus": "logged in",
-  "logoutButton": "Logout"
+  "logoutButton": "Logout",
+  "labelLanguage": "Language",
+  "labelEmailOrUser": "Email or User ID",
+  "labelPassword": "Password",
+  "confidentialityNote": "Conversations remain confidential."
 }
