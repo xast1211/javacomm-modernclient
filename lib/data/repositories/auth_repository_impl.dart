@@ -66,6 +66,12 @@ class AuthRepositoryImpl implements AuthRepository {
            backgroundColor: backgroundColor,
        );
   }
+
+  @override
+  Future<void> register(String email) async {
+    // Defaulting to 'en' for now, or could pass from UI
+    await remoteDataSource.registerUser(email, 'en');
+  }
   
   Future<void> connectAndLogin(String userid, String password, String email) async {
       await _performWebSocketLogin(email, password, userid: userid);

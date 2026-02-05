@@ -275,29 +275,54 @@ class _LoginPageState extends State<LoginPage> {
                      ),
                      const SizedBox(height: 30),
                      
-                     // Login Button (Thumb Up)
-                     ElevatedButton.icon(
-                       onPressed: _onLogin,
-                       icon: Image.asset(
-                         'assets/images/thumb_up.png',
-                         height: 24,
-                         width: 24, 
-                       ),
-                       label: Text(
-                         l10n.loginButton,
-                         style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-                       ),
-                       style: ElevatedButton.styleFrom(
-                         backgroundColor: backgroundColor, // Match page background
-                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                         shape: RoundedRectangleBorder(
-                           borderRadius: BorderRadius.circular(8), // Rounded corners
-                           side: const BorderSide(color: Colors.white, width: 1), // White border
-                         ),
-                       ),
-                     ),
+                      // Login Button (Thumb Up)
+                      SizedBox(
+                        width: 200,
+                        child: ElevatedButton.icon(
+                          onPressed: _onLogin,
+                          icon: Image.asset(
+                            'assets/images/thumb_up.png',
+                            height: 24,
+                            width: 24, 
+                          ),
+                          label: Text(
+                            l10n.loginButton,
+                            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: backgroundColor, // Match page background
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8), // Rounded corners
+                              side: const BorderSide(color: Colors.white, width: 1), // White border
+                            ),
+                          ),
+                        ),
+                      ),
                      
-                     if (_canCheckBiometrics) ...[
+                      const SizedBox(height: 20),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: 200,
+                        child: ElevatedButton.icon(
+                          onPressed: () => context.push('/register'),
+                          icon: const Icon(Icons.person_add, size: 24, color: Colors.white),
+                          label: Text(
+                            l10n.registerButton,
+                            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: backgroundColor, // Match page background
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: const BorderSide(color: Colors.white, width: 1),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      if (_canCheckBiometrics) ...[
                        const SizedBox(height: 20),
                        IconButton(
                          icon: const Icon(Icons.fingerprint, size: 40, color: Colors.white),

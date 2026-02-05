@@ -54,5 +54,9 @@
   "labelLanguage": "Sprache",
   "labelEmailOrUser": "E-Mail oder User ID",
   "labelPassword": "Passwort",
-  "confidentialityNote": "Gespräche bleiben vertraulich."
+  "confidentialityNote": "Gespräche bleiben vertraulich.",
+  "registerButton": "Registrieren",
+  "registerTitle": "Registrieren",
+  "registerSuccess": "Registrierung erfolgreich. Bitte prüfen Sie Ihre E-Mails.",
+  "registerEmailNote": "Die Zugangsdaten werden Ihnen per E-Mail zugesendet."
 }

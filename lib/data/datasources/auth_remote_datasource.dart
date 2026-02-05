@@ -6,6 +6,7 @@ import '../../core/constants/api_constants.dart';
 abstract class AuthRemoteDataSource {
   Future<String> getRsaPublicKey();
   Future<String> getToken();
+  Future<void> registerUser(String email, String lang);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -49,6 +50,28 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return response.body;
     } else {
       throw Exception('Failed to get token: ${response.statusCode}');
+    }
+  }
+
+  @override
+  Future<void> registerUser(String email, String lang) async {
+    final url = Uri.parse('${ApiConstants.restBaseUrl}${ApiConstants.signin}');
+    print('Sending Registration Request to: $url');
+    
+    final response = await client.post(
+      url,
+      body: {
+        'email': email,
+        'lang': lang,
+        'webconfirm': 'false',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      print('Registration successful');
+      return;
+    } else {
+      throw Exception('Registration failed: ${response.statusCode}');
     }
   }
 }

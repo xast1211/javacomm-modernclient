@@ -27,6 +27,7 @@ import 'presentation/bloc/chat_bloc.dart';
 import 'presentation/bloc/settings_bloc.dart';
 
 import 'presentation/pages/login_page.dart';
+import 'presentation/pages/register_page.dart';
 import 'presentation/pages/home_page.dart';
 import 'presentation/pages/chat_page.dart';
 import 'presentation/pages/settings_page.dart';
@@ -60,13 +61,20 @@ GoRouter _createRouter(BuildContext context) {
       final isLoggedIn = authState is SignInSuccess;
       final isGoingToLogin = state.matchedLocation == '/';
 
-      // If not logged in and trying to access protected route, redirect to login
-      if (!isLoggedIn && !isGoingToLogin) {
+      final isGoingToRegister = state.matchedLocation == '/register';
+
+      // If not logged in...
+      if (!isLoggedIn) {
+        // Allow access to login and register pages
+        if (isGoingToLogin || isGoingToRegister) {
+            return null;
+        }
+        // Otherwise redirect to login
         return '/';
       }
 
-      // If logged in and on login page, redirect to home
-      if (isLoggedIn && isGoingToLogin) {
+      // If logged in and on login/register page, redirect to home
+      if (isLoggedIn && (isGoingToLogin || isGoingToRegister)) {
         return '/home';
       }
 
@@ -76,6 +84,10 @@ GoRouter _createRouter(BuildContext context) {
       GoRoute(
         path: '/',
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterPage(),
       ),
       GoRoute(
         path: '/home',

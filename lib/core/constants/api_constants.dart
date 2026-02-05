@@ -18,6 +18,7 @@ class ApiConstants {
   static const String writeKeepAlive = '/user/write/keepalive';
   static const String writeTheme = '/user/write/eis';
   static const String readUserData = '/user/read/data'; 
+  static const String signin = '/signin';
   
   // Endpoints using jaxrsContextPath (restful/jaxrs) if any needed later
   // static const String domains = '/domains';

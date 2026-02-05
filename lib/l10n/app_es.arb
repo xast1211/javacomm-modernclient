@@ -54,5 +54,8 @@
   "labelLanguage": "Idioma",
   "labelEmailOrUser": "Correo o ID de usuario",
   "labelPassword": "Contraseña",
+  "registerTitle": "Registrarse",
+  "registerSuccess": "Registro exitoso. Por favor revise sus correos electrónicos.",
+  "registerEmailNote": "Los datos de acceso le serán enviados por correo electrónico.",
   "confidentialityNote": "Las conversaciones son confidenciales."
 }

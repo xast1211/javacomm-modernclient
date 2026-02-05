@@ -54,5 +54,8 @@
   "labelLanguage": "Language",
   "labelEmailOrUser": "Email or User ID",
   "labelPassword": "Password",
+  "registerTitle": "Register",
+  "registerSuccess": "Registration successful. Please check your emails.",
+  "registerEmailNote": "The access data will be sent to you by e-mail.",
   "confidentialityNote": "Conversations remain confidential."
 }
