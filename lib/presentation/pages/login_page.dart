@@ -224,6 +224,8 @@ class _LoginPageState extends State<LoginPage> {
                        hintText: '********',
                      ),
                      obscureText: true,
+                     textInputAction: TextInputAction.done,
+                     onFieldSubmitted: (_) => _onLogin(),
                      validator: (value) {
                        if (value == null || value.isEmpty) {
                          return l10n.validationPasswordRequired;

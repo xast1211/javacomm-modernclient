@@ -48,5 +48,7 @@
   "confirmPasswordLabel": "Confirmar contraseña",
   "validationPasswordMismatch": "No coinciden",
   "saveChangesButton": "Guardar cambios",
+  "appTitle": "Conversación privada 1:1",
+  "loggedInStatus": "conectado",
   "logoutButton": "Cerrar sesión"
 }

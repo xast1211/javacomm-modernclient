@@ -15,11 +15,13 @@ import '../bloc/user_list_bloc.dart';
 class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool showRefresh;
+  final bool useProfileAsTitle;
 
   const JChatAppBar({
     super.key, 
     required this.title,
     this.showRefresh = false,
+    this.useProfileAsTitle = false,
   });
 
   @override
@@ -31,8 +33,55 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       myNickname = authState.nickname;
     }
 
-    return AppBar(
-      title: Column(
+    Widget titleWidget;
+    bool centerTitle;
+
+    if (useProfileAsTitle) {
+      centerTitle = true; // We use Stack to handle alignment manually within the title area
+      
+      // Using a Stack to position elements relative to the AppBar title area.
+      // Note: AppBar title area has its own constraints.
+      // To ensure "1:1..." is exactly center, we center the Stack.
+      // To ensure "Nick..." is left, we align left.
+      
+      final l10n = AppLocalizations.of(context)!;
+      final nickText = '${myNickname ?? title} ${l10n.loggedInStatus}';
+      final centerText = l10n.appTitle; // "1:1 Privatgespräch"
+
+      titleWidget = Stack(
+        children: [
+           // Center Text (The Main Title)
+           Align(
+             alignment: Alignment.center,
+             child: Text(
+               centerText,
+               style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                 fontWeight: FontWeight.bold
+               ),
+               textAlign: TextAlign.center,
+             ),
+           ),
+           // Left Text (Nickname + logged in)
+           // We use Positioned or Align.
+           // Since Stack inside AppBar.title might not stretch to full width of screen,
+           // we might need to be careful. AppBar.title takes available space between leading and actions.
+           // Leading is empty/default (back button usually, but here none on Home).
+           // Actions are on the right.
+           Align(
+             alignment: Alignment.centerLeft,
+             child: Text(
+               nickText,
+               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                 // Smaller font for status
+                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
+               ),
+             ),
+           ),
+        ],
+      );
+    } else {
+      centerTitle = true;
+      titleWidget = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(title),
@@ -44,8 +93,12 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
         ],
-      ),
-      centerTitle: true,
+      );
+    }
+
+    return AppBar(
+      title: titleWidget,
+      centerTitle: centerTitle,
       actions: [
           // Theme Menu
           BlocBuilder<ThemeCubit, ThemeState>(

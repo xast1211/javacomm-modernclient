@@ -48,5 +48,7 @@
   "confirmPasswordLabel": "Confirm Password",
   "validationPasswordMismatch": "Mismatch",
   "saveChangesButton": "Save Changes",
+  "appTitle": "1:1 Private Conversation",
+  "loggedInStatus": "logged in",
   "logoutButton": "Logout"
 }

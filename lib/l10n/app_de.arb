@@ -48,5 +48,7 @@
   "confirmPasswordLabel": "Passwort bestätigen",
   "validationPasswordMismatch": "Passwörter stimmen nicht überein",
   "saveChangesButton": "Änderungen speichern",
+  "appTitle": "1:1 Privatgespräch",
+  "loggedInStatus": "angemeldet",
   "logoutButton": "Abmelden"
 }

@@ -39,6 +39,7 @@ class HomePage extends StatelessWidget {
         appBar: JChatAppBar(
           title: AppLocalizations.of(context)!.onlineUsersTitle,
           showRefresh: false,
+          useProfileAsTitle: true,
         ),
         body: BlocBuilder<UserListBloc, UserListState>(
           builder: (context, state) {
@@ -115,7 +116,6 @@ class HomePage extends StatelessWidget {
                   //   child: Text(user.nickname.substring(0, 1).toUpperCase()),
                   // ),
                   title: Text(user.nickname),
-                  subtitle: Text(user.userid),
                   trailing: const Icon(Icons.chat),
                   onTap: () {
                      // Check existing chat?

@@ -24,6 +24,7 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final _textController = TextEditingController();
+  final _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -32,12 +33,24 @@ class _ChatPageState extends State<ChatPage> {
       recipientUid: widget.recipientUid,
       recipientNickname: widget.recipientNickname
     ));
+    // Request focus slightly after build to ensure keyboard shows
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+       _focusNode.requestFocus();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _textController.dispose();
+    _focusNode.dispose();
+    super.dispose();
   }
 
   void _sendMessage() {
      if (_textController.text.isNotEmpty) {
        context.read<ChatBloc>().add(SendMessage(_textController.text));
        _textController.clear();
+       _focusNode.requestFocus(); // Keep focus after sending
      }
   }
 
@@ -144,6 +157,8 @@ class _ChatPageState extends State<ChatPage> {
                 Expanded(
                   child: TextField(
                     controller: _textController,
+                    focusNode: _focusNode,
+                    autofocus: true,
                     decoration: InputDecoration(hintText: AppLocalizations.of(context)!.typeMessageHint),
                     onSubmitted: (_) => _sendMessage(),
                   ),
