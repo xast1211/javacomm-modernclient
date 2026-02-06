@@ -153,6 +153,7 @@ class MyApp extends StatelessWidget {
               builder: (context, locale) {
                 return MaterialApp.router(
                   title: 'Javacomm Client',
+                  debugShowCheckedModeBanner: false,
                   theme: themeState.themeData,
                   locale: locale, // Dynamic Locale
                   localizationsDelegates: const [

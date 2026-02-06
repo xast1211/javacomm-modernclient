@@ -36,49 +36,40 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     Widget titleWidget;
     bool centerTitle;
 
+    PreferredSizeWidget? bottomWidget;
+
     if (useProfileAsTitle) {
-      centerTitle = true; // We use Stack to handle alignment manually within the title area
-      
-      // Using a Stack to position elements relative to the AppBar title area.
-      // Note: AppBar title area has its own constraints.
-      // To ensure "1:1..." is exactly center, we center the Stack.
-      // To ensure "Nick..." is left, we align left.
-      
+      centerTitle = true; // Use center to ensure standard layout, but we might force left for nick
       final l10n = AppLocalizations.of(context)!;
       final nickText = '${myNickname ?? title} ${l10n.loggedInStatus}';
       final centerText = l10n.appTitle; // "1:1 Privatgespräch"
 
-      titleWidget = Stack(
-        children: [
-           // Center Text (The Main Title)
-           Align(
-             alignment: Alignment.center,
-             child: Text(
-               centerText,
-               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                 fontWeight: FontWeight.bold
-               ),
-               textAlign: TextAlign.center,
-             ),
-           ),
-           // Left Text (Nickname + logged in)
-           // We use Positioned or Align.
-           // Since Stack inside AppBar.title might not stretch to full width of screen,
-           // we might need to be careful. AppBar.title takes available space between leading and actions.
-           // Leading is empty/default (back button usually, but here none on Home).
-           // Actions are on the right.
-           Align(
-             alignment: Alignment.centerLeft,
-             child: Text(
-               nickText,
-               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                 // Smaller font for status
-                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
-               ),
-             ),
-           ),
-        ],
+      // Title is just the nickname, standard style
+      titleWidget = Text(
+        nickText,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
+        ),
       );
+      centerTitle = false; // Keep nickname to the left
+
+      // Bottom widget for "1:1 Privatgespräch"
+      bottomWidget = PreferredSize(
+        preferredSize: const Size.fromHeight(30.0),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.only(bottom: 6.0),
+          alignment: Alignment.center,
+          child: Text(
+            centerText,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+
     } else {
       centerTitle = true;
       titleWidget = Column(
@@ -99,6 +90,7 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: titleWidget,
       centerTitle: centerTitle,
+      bottom: bottomWidget,
       actions: [
           // Theme Menu
           BlocBuilder<ThemeCubit, ThemeState>(
@@ -207,5 +199,5 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => Size.fromHeight(kToolbarHeight + (useProfileAsTitle ? 30.0 : 0.0));
 }
