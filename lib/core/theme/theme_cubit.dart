@@ -29,7 +29,7 @@ class ThemeCubit extends Cubit<ThemeState> {
 
   ThemeCubit({ThemeRepository? themeRepository}) 
       : _themeRepository = themeRepository ?? ThemeRepository(),
-        super(ThemeState(AppThemeType.system, AppTheme.lightTheme));
+        super(ThemeState(AppThemeType.mokka, AppTheme.mokkaTheme));
 
   Future<void> loadSavedTheme({String? userId}) async {
     _userId = userId;
@@ -92,7 +92,7 @@ class ThemeCubit extends Cubit<ThemeState> {
         break;
       case AppThemeType.system:
       default:
-        theme = AppTheme.lightTheme;
+        theme = AppTheme.mokkaTheme;
         break;
     }
     emit(ThemeState(type, theme));

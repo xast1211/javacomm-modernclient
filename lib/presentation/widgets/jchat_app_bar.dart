@@ -132,12 +132,6 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     checked: themeState.type == AppThemeType.zitrone,
                     child: const Text('Zitrone'),
                   ),
-                  const PopupMenuDivider(),
-                  CheckedPopupMenuItem<AppThemeType>(
-                    value: AppThemeType.system,
-                    checked: themeState.type == AppThemeType.system,
-                    child: const Text('System Standard'),
-                  ),
                 ],
               );
             },

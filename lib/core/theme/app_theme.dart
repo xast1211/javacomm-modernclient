@@ -34,11 +34,11 @@ class AppTheme {
   }
 
   // JChat "Original" Colors extracted from Source
-  static ThemeData get mokkaTheme => _buildTheme(const Color(0xFFD9D9D9), const Color(0xFFD9D9D9)); // JQUERY_MOKKA
-  static ThemeData get vanilleTheme => _buildTheme(const Color(0xFFFFF9B9), const Color(0xFFFFF9B9)); // JQUERY_VANILLE
-  static ThemeData get joghurtTheme => _buildTheme(const Color(0xFFDAD4F7), const Color(0xFFDAD4F7)); // JQUERY_HELLBLAU (Joghurt uses this base)
-  static ThemeData get blaubeereTheme => _buildTheme(const Color(0xFF4424D6), const Color(0xFFDAD4F7)); // JQUERY_BLAU (Base) / JQUERY_HELLBLAU (Bg hint)
-  static ThemeData get erdbeereTheme => _buildTheme(const Color(0xFFF7A9C3), const Color(0xFFFFEBEE)); // JQUERY_ERDBEERE
+  static ThemeData get mokkaTheme => _buildTheme(const Color(0xFF795548), const Color(0xFFD9D9D9)); // JQUERY_HOMEPAGE (Darker for Menu) / JQUERY_MOKKA (Bg)
+  static ThemeData get vanilleTheme => _buildTheme(const Color(0xFFFFE135), const Color(0xFFFFF9B9)); // Custom Yellow (Darker for Menu) / JQUERY_VANILLE (Bg)
+  static ThemeData get joghurtTheme => _buildTheme(const Color(0xFFB0A8E0), const Color(0xFFDAD4F7)); // JQUERY_HELLBLAU (Darkened for Menu) / JQUERY_HELLBLAU
+  static ThemeData get blaubeereTheme => _buildTheme(const Color(0xFF4424D6), const Color(0xFFDAD4F7)); // JQUERY_BLAU / JQUERY_HELLBLAU
+  static ThemeData get erdbeereTheme => _buildTheme(const Color(0xFFFB2943), const Color(0xFFF7A9C3)); // Custom Red (Darker for Menu) / JQUERY_ERDBEERE (Bg)
   static ThemeData get zitroneTheme => _buildTheme(const Color(0xFFB8CB3A), const Color(0xFFF2F0E4)); // Custom Lime / JQUERY_LEMON (Bg)
 
   static ThemeData _buildTheme(Color seed, Color background) {
