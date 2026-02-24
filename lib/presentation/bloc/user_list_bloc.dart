@@ -69,7 +69,5 @@ class UserListBloc extends Bloc<UserListEvent, UserListState> {
        // Start with empty list so we see "No Users" while waiting for update
        emit(const UserListLoaded([]));
     }
-    
-    chatRepository.requestOnlineUsers();
   }
 }

@@ -2,7 +2,6 @@ import 'package:json_annotation/json_annotation.dart';
 import 'enums.dart';
 import 'message.dart';
 import 'usrlogin.dart';
-import 'keepalive.dart';
 
 part 'chat_models.g.dart';
 

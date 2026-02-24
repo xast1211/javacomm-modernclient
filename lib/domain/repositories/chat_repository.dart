@@ -13,7 +13,6 @@ abstract class ChatRepository {
   String? get myUserId;
   String? get mySessionId;
 
-  void requestOnlineUsers();
   void callPrivateChat(String recipientUid, String recipientNickname);
   Future<void> sendPrivateMessage(String recipientUid, String message, {String? remoteSessionId, String? localSessionId});
   Future<void> sendLeavePrivateChat(String goneSessionId);

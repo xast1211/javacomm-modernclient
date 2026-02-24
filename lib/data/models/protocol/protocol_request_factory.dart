@@ -7,7 +7,6 @@ import 'chat_models.dart';
 import 'call_remote_user.dart';
 import 'usrlogin.dart';
 import 'update_user.dart';
-import 'keepalive.dart';
 
 /// Central factory for creating WebSocket request messages.
 /// Ensures consistent use of Headers, Commands, and Parameter keys.
@@ -50,29 +49,6 @@ class ProtocolRequestFactory {
   }
 
   // --- CHAT & ONLINE STATUS ---
-
-  static KeepAlive createKeepAliveRequest({
-    required String sessionId,
-  }) {
-    // KeepAlive usually doesn't need a UUID, just the session ID in dataset?
-    // Checking previous implementation: dataset: {'SESSIONID': mySessionId}
-    return KeepAlive(
-      header: Header.REQUEST,
-      command: Command.KEEPALIVE,
-      dataset: {'SESSIONID': sessionId},
-    );
-  }
-
-  static UserOnlineList createOnlineUsersRequest({
-    required String userId,
-  }) {
-    // Client requests list by sending USERONLINELIST REQUEST
-    return UserOnlineList(
-      header: Header.REQUEST,
-      command: Command.USERONLINELIST,
-      dataset: {'USERID': userId},
-    );
-  }
 
   // --- MESSAGING ---
 

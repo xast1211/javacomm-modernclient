@@ -3,7 +3,6 @@ import 'update_user.dart';
 import 'message.dart';
 import 'chat_models.dart';
 import 'usrlogin.dart';
-import 'keepalive.dart';
 import 'call_remote_user.dart';
 import '../../../core/debug/global_debug.dart';
 
@@ -36,8 +35,6 @@ class MessageFactory {
           return CallRemoteUser.fromJson(json);
         case 'USRLOGIN':
           return UsrLogin.fromJson(json);
-        case 'KEEPALIVE':
-          return KeepAlive.fromJson(json);
         case 'LEAVEPRIVATECHAT':
           return LeavePrivateChat.fromJson(json);
           

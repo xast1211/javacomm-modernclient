@@ -65,7 +65,7 @@ class HomePage extends StatelessWidget {
           final callerName = resolvedCallerName.isNotEmpty ? resolvedCallerName : request.localNickname;
           return AlertDialog(
              title: Text(l10n.incomingChatRequestTitle),
-             content: Text(l10n.incomingCallFrom(callerName, request.senderUid)),
+             content: Text(l10n.incomingCallFrom(callerName)),
              actions: [
                TextButton(
                   onPressed: () {

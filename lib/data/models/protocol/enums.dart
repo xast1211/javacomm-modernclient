@@ -20,8 +20,6 @@ enum Command {
   USRLOGIN,
   @JsonValue('CHATMESSAGE')
   CHATMESSAGE,
-  @JsonValue('KEEPALIVE')
-  KEEPALIVE,
   @JsonValue('USERONLINELIST')
   USERONLINELIST,
   @JsonValue('PRIVATEMESSAGE')

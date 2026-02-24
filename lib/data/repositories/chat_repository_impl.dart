@@ -11,7 +11,6 @@ import '../models/protocol/chat_models.dart';
 import '../models/protocol/enums.dart';
 import '../models/protocol/message.dart';
 import '../models/protocol/usrlogin.dart';
-import '../models/protocol/keepalive.dart';
 import '../models/protocol/call_remote_user.dart';
 import '../models/protocol/protocol_request_factory.dart';
 import '../../core/debug/global_debug.dart';
@@ -59,30 +58,11 @@ class ChatRepositoryImpl implements ChatRepository {
     mySessionId = sessionId;
     myForegroundColor = foregroundColor;
     myBackgroundColor = backgroundColor;
-    
-    // Send initial KeepAlive immediately
-    if (mySessionId != null) {
-         final keepAlive = ProtocolRequestFactory.createKeepAliveRequest(
-            sessionId: mySessionId!
-          );
-          print('Sending Initial KeepAlive');
-          webSocketService.sendMessage(keepAlive);
-    }
-    
-    // requestOnlineUsers(); // Server pushes list automatically
     if (myUserId != null) {
        _onlineUsersController.add(
          _lastRawUsers.where((u) => u.userid != myUserId).toList()
        );
     }
-    
-    // Safety fallback: If list is empty, request it after delay
-    Future.delayed(const Duration(seconds: 1), () {
-        if (_lastRawUsers.isEmpty) {
-            print('Fallback: Requesting online users manually');
-            requestOnlineUsers();
-        }
-    });
     
     _startKeepAlive();
   }
@@ -169,14 +149,6 @@ class ChatRepositoryImpl implements ChatRepository {
        print('Repository: Received CALLREMOTEUSER. RemoteNick: ${message.remoteNickname} (Caller)');
        _callRemoteUserController.add(message);
     }
-  }
-
-  @override
-  void requestOnlineUsers() {
-    final msg = ProtocolRequestFactory.createOnlineUsersRequest(
-      userId: myUserId ?? ''
-    );
-    webSocketService.sendMessage(msg);
   }
 
   @override

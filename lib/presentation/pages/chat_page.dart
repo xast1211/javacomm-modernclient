@@ -25,6 +25,7 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final _textController = TextEditingController();
   final _focusNode = FocusNode();
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -43,7 +44,18 @@ class _ChatPageState extends State<ChatPage> {
   void dispose() {
     _textController.dispose();
     _focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _sendMessage() {
@@ -51,6 +63,7 @@ class _ChatPageState extends State<ChatPage> {
        context.read<ChatBloc>().add(SendMessage(_textController.text));
        _textController.clear();
        _focusNode.requestFocus(); // Keep focus after sending
+       _scrollToBottom(); // Instant scroll on send
      }
   }
 
@@ -92,7 +105,14 @@ class _ChatPageState extends State<ChatPage> {
               },
               child: BlocBuilder<ChatBloc, ChatState>(
                 builder: (context, state) {
+                // Auto-scroll when messages change. Need post-frame to wait for ListView to build new item.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_scrollController.hasClients) {
+                        _scrollToBottom();
+                    }
+                });
                 return ListView.builder(
+                  controller: _scrollController,
                   itemCount: state.messages.length,
                   itemBuilder: (context, index) {
                     final msg = state.messages[index];
