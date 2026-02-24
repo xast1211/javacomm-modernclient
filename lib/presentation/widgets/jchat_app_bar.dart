@@ -72,16 +72,18 @@ class JChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     } else {
       centerTitle = true;
+      final l10n = AppLocalizations.of(context)!;
       titleWidget = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title),
+          Text('Chatpartner: $title', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           if (myNickname != null)
             Text(
-              myNickname,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
-              ),
+               'Ich: $myNickname',
+               style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)
+               ),
             ),
         ],
       );

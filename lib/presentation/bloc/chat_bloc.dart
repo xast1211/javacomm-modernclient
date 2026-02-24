@@ -58,7 +58,13 @@ class LeaveChat extends ChatEvent {
 class AcceptIncomingCall extends ChatEvent {}
 class RejectIncomingCall extends ChatEvent {}
 
+// New: Outgoing Request Status Events
+class CancelOutgoingRequest extends ChatEvent {}
+class ClearOutgoingRequestStatus extends ChatEvent {}
+
 enum ChatConnectionStatus { initial, connected, disconnected, incomingRequest }
+
+enum OutgoingRequestStatus { none, pending, rejected, busy }
 
 // States
 class ChatState extends Equatable {
@@ -70,6 +76,10 @@ class ChatState extends Equatable {
   final String? localChatSessionId;
   final CallRemoteUser? pendingCallRequest; // Stored for manual accept
   
+  // Outstanding Request State (Inline UI)
+  final String? outgoingRequestUid;
+  final OutgoingRequestStatus outgoingRequestStatus;
+  
   const ChatState({
       this.status = ChatConnectionStatus.initial,
       this.messages = const [], 
@@ -78,6 +88,8 @@ class ChatState extends Equatable {
       this.remoteSessionId,
       this.localChatSessionId,
       this.pendingCallRequest,
+      this.outgoingRequestUid,
+      this.outgoingRequestStatus = OutgoingRequestStatus.none,
   });
   
   ChatState copyWith({
@@ -88,6 +100,8 @@ class ChatState extends Equatable {
     String? remoteSessionId,
     String? localChatSessionId,
     CallRemoteUser? pendingCallRequest,
+    String? outgoingRequestUid,
+    OutgoingRequestStatus? outgoingRequestStatus,
   }) {
     return ChatState(
       status: status ?? this.status,
@@ -97,11 +111,17 @@ class ChatState extends Equatable {
       remoteSessionId: remoteSessionId ?? this.remoteSessionId,
       localChatSessionId: localChatSessionId ?? this.localChatSessionId,
       pendingCallRequest: pendingCallRequest ?? this.pendingCallRequest, // Keep if null passed? No, explicit null clears it.
+      outgoingRequestUid: outgoingRequestUid ?? this.outgoingRequestUid,
+      outgoingRequestStatus: outgoingRequestStatus ?? this.outgoingRequestStatus,
     );
   }
 
   @override
-  List<Object?> get props => [status, messages, recipientUid, recipientNickname, remoteSessionId, localChatSessionId, pendingCallRequest];
+  List<Object?> get props => [
+    status, messages, recipientUid, recipientNickname, 
+    remoteSessionId, localChatSessionId, pendingCallRequest,
+    outgoingRequestUid, outgoingRequestStatus
+  ];
 }
 
 // Bloc
@@ -118,6 +138,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ReceiveCallRemoteUser>(_onReceiveCallRemoteUser);
     on<AcceptIncomingCall>(_onAcceptIncomingCall);
     on<RejectIncomingCall>(_onRejectIncomingCall);
+    on<CancelOutgoingRequest>(_onCancelOutgoingRequest);
+    on<ClearOutgoingRequestStatus>(_onClearOutgoingRequestStatus);
     on<PrivateChatLeft>(_onPrivateChatLeft);
     on<LeaveChat>(_onLeaveChat);
 
@@ -215,6 +237,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         recipientNickname: event.recipientNickname,
         messages: [],
         remoteSessionId: null, // Reset
+        outgoingRequestUid: event.recipientUid,
+        outgoingRequestStatus: OutgoingRequestStatus.pending,
     ));
 
     chatRepository.callPrivateChat(event.recipientUid, event.recipientNickname); 
@@ -226,12 +250,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
        print('ChatBloc: Received CALLREMOTEUSER Header: ${event.message.header}. Nick: ${event.message.localNickname}');
 
        if (event.message.header == Header.CONFIRM) {
-            // Outgoing Call Accepted by Peer
-            // Based on Server Logic (DatabaseService.callRemoteUser) & JChat (JChat.java accept):
-            // CONFIRM Message:
-            // LOCAL_SESSIONID = My (Caller) Session ID
-            // REMOTE_SESSIONID = Peer (Recipient) Session ID
-            
             final myChatSessionId = event.message.localSessionId ?? ''; 
             final peerSessionId = event.message.remoteSessionId ?? '';
             
@@ -244,20 +262,63 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
                     localChatSessionId: myChatSessionId, // My ID
                     messages: [],
                     recipientUid: event.message.senderUid.isNotEmpty ? event.message.senderUid : _currentRecipientUid,
-                    recipientNickname: event.message.localNickname
+                    recipientNickname: event.message.localNickname,
+                    outgoingRequestUid: null,
+                    outgoingRequestStatus: OutgoingRequestStatus.none,
                 ));
             }
             return;
        }
 
+       if (event.message.header == Header.RESPONSE || event.message.header == Header.ERROR) {
+           print('ChatBloc: Received CALLREMOTEUSER Rejection/Busy. Header: ${event.message.header}, Dataset: ${event.message.dataset}');
+           
+           if (state.outgoingRequestStatus == OutgoingRequestStatus.pending) {
+               print('ChatBloc: Force-matching Rejection to pending request ${state.outgoingRequestUid}');
+               
+               final newStatus = event.message.header == Header.ERROR 
+                                 ? OutgoingRequestStatus.busy 
+                                 : OutgoingRequestStatus.rejected;
+                                 
+               emit(state.copyWith(
+                   outgoingRequestStatus: newStatus
+               ));
+               
+               Future.delayed(const Duration(seconds: 5), () {
+                   add(ClearOutgoingRequestStatus());
+               });
+           }
+           return;
+       }
+
        // INCOMING REQUEST (Header.REQUEST)
-       print('ChatBloc: Received Incoming Call Request from ${event.message.localNickname}');
-       
-       // Store info but DO NOT Accept yet. Wait for User.
-       // Set Recipient Info so UI can show "Call from Bob"
-       
-       final callerUid = event.message.senderUid.isNotEmpty ? event.message.senderUid : 'UNKNOWN'; 
-       final callerNick = event.message.localNickname; 
+       if (event.message.header == Header.REQUEST) {
+           print('ChatBloc: Received Incoming Call Request from ${event.message.localNickname}');
+           
+           // Store info but DO NOT Accept yet. Wait for User.
+           // Set Recipient Info so UI can show "Call from Bob"
+           
+           final callerUid = event.message.senderUid.isNotEmpty ? event.message.senderUid : 'UNKNOWN'; 
+           
+           // In JavaComm, the sender's nickname might be omitted in the dataset (only sending our localNickname).
+           // We prioritize remoteNickname, but if empty, we MUST lookup the user by their UID from the online list 
+           // to avoid displaying our own name as the caller's name!
+           String callerNick = event.message.remoteNickname.isNotEmpty 
+                               ? event.message.remoteNickname 
+                               : '';
+
+           if (callerNick.isEmpty && callerUid != 'UNKNOWN') {
+               // Try to lookup from the online users list.
+               try {
+                  final matchedUser = chatRepository.lastUsers.firstWhere((u) => u.userid == callerUid);
+                  callerNick = matchedUser.nickname;
+               } catch (e) {
+                  // Fallback to localNickname if absolutely necessary, but this will look wrong
+                  callerNick = event.message.localNickname; 
+               }
+           } else if (callerNick.isEmpty) {
+               callerNick = event.message.localNickname;
+           }
  
        _currentRecipientUid = callerUid;
  
@@ -267,6 +328,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           recipientNickname: callerNick,
           pendingCallRequest: event.message, // Store the request object
        ));
+       }
   }
 
   void _onAcceptIncomingCall(AcceptIncomingCall event, Emitter<ChatState> emit) {
@@ -312,25 +374,71 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
        _currentRecipientUid = null;
   }
 
+  void _onCancelOutgoingRequest(CancelOutgoingRequest event, Emitter<ChatState> emit) {
+      print('ChatBloc: Canceling outgoing request to ${state.outgoingRequestUid}');
+      
+      // If we wanted to tell the server we cancelled, we'd send a LEAVE or specific CANCEL msg here.
+      // For now, simply clearing the UI state stops waiting.
+      emit(state.copyWith(
+          outgoingRequestUid: null,
+          outgoingRequestStatus: OutgoingRequestStatus.none,
+      ));
+  }
+
+  void _onClearOutgoingRequestStatus(ClearOutgoingRequestStatus event, Emitter<ChatState> emit) {
+      if (state.outgoingRequestStatus == OutgoingRequestStatus.rejected || 
+          state.outgoingRequestStatus == OutgoingRequestStatus.busy) {
+          emit(state.copyWith(
+              outgoingRequestUid: null,
+              outgoingRequestStatus: OutgoingRequestStatus.none,
+          ));
+      }
+  }
+
   // -----------------------------
 
   void _onCallResponseReceived(CallResponseReceived event, Emitter<ChatState> emit) {
-      // Server converts CALLREMOTEUSER(Confirm) -> CALLPRIVATECHAT(Confirm).
-      // Mapping:
-      // LocalSessionId = Caller (Flutter) WebSocket ID
-      // RemoteSessionId = Recipient (JChat) WebSocket ID
-      
-      final myChatSessionId = event.message.localSessionId ?? ''; 
-      final peerSessionId = event.message.remoteSessionId ?? ''; 
-      
-      print('ChatBloc: Received Call Response. Peer: $peerSessionId, My: $myChatSessionId');
-      
-      if (peerSessionId.isNotEmpty) {
-           emit(state.copyWith(
-             status: ChatConnectionStatus.connected, // Ensure status is updated
-             remoteSessionId: peerSessionId, // Send to JChat
-             localChatSessionId: myChatSessionId, // My ID
-           ));
+      if (event.message.header == Header.CONFIRM) {
+          final myChatSessionId = event.message.localSessionId ?? ''; 
+          final peerSessionId = event.message.remoteSessionId ?? ''; 
+          
+          print('ChatBloc: Received CONFIRM Call Response. Peer: $peerSessionId, My: $myChatSessionId');
+          
+          if (peerSessionId.isNotEmpty) {
+               emit(state.copyWith(
+                 status: ChatConnectionStatus.connected, // Ensure status is updated
+                 remoteSessionId: peerSessionId, // Send to JChat
+                 localChatSessionId: myChatSessionId, // My ID
+                 outgoingRequestUid: null,
+                 outgoingRequestStatus: OutgoingRequestStatus.none,
+               ));
+          }
+      } else if (event.message.header == Header.RESPONSE) {
+          print('ChatBloc: Received RESPONSE (Declined). Dataset=${event.message.dataset}');
+          
+          // FOR TESTING: Always assume any RESPONSE is a rejection of our pending request regardless of UID.
+          // Because the backend might be sending malformed or unexpected UIDs in the RESPONSE payload.
+          if (state.outgoingRequestStatus == OutgoingRequestStatus.pending) {
+              print('ChatBloc: Force-matching Rejection to pending request ${state.outgoingRequestUid}');
+              emit(state.copyWith(
+                  outgoingRequestStatus: OutgoingRequestStatus.rejected
+              ));
+              Future.delayed(const Duration(seconds: 5), () {
+                  add(ClearOutgoingRequestStatus());
+              });
+          }
+      } else if (event.message.header == Header.ERROR) {
+          print('ChatBloc: Received ERROR (Busy). Dataset=${event.message.dataset}');
+          
+          if (state.outgoingRequestStatus == OutgoingRequestStatus.pending) {
+              print('ChatBloc: Force-matching Busy to pending request ${state.outgoingRequestUid}');
+              emit(state.copyWith(
+                  outgoingRequestStatus: OutgoingRequestStatus.busy
+              ));
+              Future.delayed(const Duration(seconds: 5), () {
+                  add(ClearOutgoingRequestStatus());
+              });
+          }
       }
   }
 
@@ -383,16 +491,25 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   void _onReceiveCallRequest(ReceiveCallRequest event, Emitter<ChatState> emit) {
+      if (event.message.header != Header.REQUEST) return;
+
       // Legacy / CALLPRIVATECHAT handling
       print('ChatBloc: Handling Legacy CALLPRIVATECHAT Request from ${event.message.localNickname}');
       
-      // We can reuse the Manual Accept logic here if we map it to CallRemoteUser 
-      // OR just implement it separately. 
-      // For now, auto-accept this one (since user asked about "Incoming Call" usually meaning RemoteUser).
-      // Or block it. Let's auto-accept for backward compat or just log.
-      
       final peerUid = event.message.senderUid;
-      final peerNickname = event.message.localNickname;
+      
+      String peerNickname = event.message.remoteNickname ?? '';
+      if (peerNickname.isEmpty && peerUid.isNotEmpty) {
+          try {
+             final matchedUser = chatRepository.lastUsers.firstWhere((u) => u.userid == peerUid);
+             peerNickname = matchedUser.nickname;
+          } catch (e) {
+             peerNickname = event.message.localNickname;
+          }
+      } else if (peerNickname.isEmpty) {
+          peerNickname = event.message.localNickname;
+      }
+      
       final peerChatSessionId = event.message.localSessionId;
 
        _currentRecipientUid = peerUid;
@@ -406,6 +523,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           messages: [],
           remoteSessionId: peerChatSessionId, 
           localChatSessionId: localChatId,
+          outgoingRequestUid: null,
+          outgoingRequestStatus: OutgoingRequestStatus.none,
       ));
   }
 }

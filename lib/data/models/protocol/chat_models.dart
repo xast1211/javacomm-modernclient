@@ -16,10 +16,13 @@ class UserOnline {
   final int? _foregroundColor;
   @JsonKey(name: 'BACKGROUND_COLOR')
   final int? _backgroundColor;
+  @JsonKey(name: 'AGENT')
+  final Agent? agent;
 
   UserOnline({
     required this.userid,
     this.nickname = 'Unknown',
+    this.agent,
     int? foregroundColor,
     int? backgroundColor,
   }) : _foregroundColor = foregroundColor, _backgroundColor = backgroundColor;

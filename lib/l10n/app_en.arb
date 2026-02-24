@@ -21,7 +21,7 @@
   "validationPasswordRequired": "Please enter password",
   "onlineUsersTitle": "Online Users",
   "incomingChatRequestTitle": "Incoming Chat Request",
-  "incomingCallFrom": "Incoming call from",
+  "incomingCallFrom": "Incoming chat from {nickname}",
   "rejectButton": "Reject",
   "acceptButton": "Accept",
   "errorPrefix": "Error:",
@@ -57,5 +57,9 @@
   "registerTitle": "Register",
   "registerSuccess": "Registration successful. Please check your emails.",
   "registerEmailNote": "The access data will be sent to you by e-mail.",
-  "confidentialityNote": "Conversations remain confidential."
+  "confidentialityNote": "Conversations remain confidential.",
+  "chatRequestPending": "Request pending",
+  "chatRequestDeclined": "Declined",
+  "chatRequestBusy": "User already chatting",
+  "cancelButtonText": "Cancel"
 }

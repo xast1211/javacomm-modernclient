@@ -21,7 +21,7 @@
   "validationPasswordRequired": "Bitte Passwort eingeben",
   "onlineUsersTitle": "Online-Benutzer",
   "incomingChatRequestTitle": "Eingehende Chat-Anfrage",
-  "incomingCallFrom": "Eingehender Anruf von",
+  "incomingCallFrom": "Eingehender Chat von {nickname}",
   "rejectButton": "Ablehnen",
   "acceptButton": "Annehmen",
   "errorPrefix": "Fehler:",
@@ -58,5 +58,9 @@
   "registerButton": "Registrieren",
   "registerTitle": "Registrieren",
   "registerSuccess": "Registrierung erfolgreich. Bitte prüfen Sie Ihre E-Mails.",
-  "registerEmailNote": "Die Zugangsdaten werden Ihnen per E-Mail zugesendet."
+  "registerEmailNote": "Die Zugangsdaten werden Ihnen per E-Mail zugesendet.",
+  "chatRequestPending": "Anfrage läuft",
+  "chatRequestDeclined": "Abgelehnt",
+  "chatRequestBusy": "User chattet schon",
+  "cancelButtonText": "Abbrechen"
 }

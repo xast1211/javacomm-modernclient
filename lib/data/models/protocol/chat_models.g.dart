@@ -9,13 +9,23 @@ part of 'chat_models.dart';
 UserOnline _$UserOnlineFromJson(Map<String, dynamic> json) => UserOnline(
       userid: json['USERID'] as String? ?? '',
       nickname: json['NICKNAME'] as String? ?? 'Unknown',
+      agent: $enumDecodeNullable(_$AgentEnumMap, json['AGENT']),
     );
 
 Map<String, dynamic> _$UserOnlineToJson(UserOnline instance) =>
     <String, dynamic>{
       'USERID': instance.userid,
       'NICKNAME': instance.nickname,
+      'AGENT': _$AgentEnumMap[instance.agent],
     };
+
+const _$AgentEnumMap = {
+  Agent.Desktop: 'Desktop',
+  Agent.Android: 'Android',
+  Agent.iOS: 'iOS',
+  Agent.Web: 'Web',
+  Agent.Browser: 'Browser',
+};
 
 UserOnlineList _$UserOnlineListFromJson(Map<String, dynamic> json) =>
     UserOnlineList(

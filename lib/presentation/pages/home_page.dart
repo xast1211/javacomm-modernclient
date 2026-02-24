@@ -32,7 +32,7 @@ class HomePage extends StatelessWidget {
              });
         } else if (state.status == ChatConnectionStatus.incomingRequest && state.pendingCallRequest != null) {
              print('HomePage: Showing Incoming Call Dialog');
-             _showIncomingCallDialog(context, state.pendingCallRequest!);
+             _showIncomingCallDialog(context, state.pendingCallRequest!, state.recipientNickname ?? '');
         }
       },
       child: Scaffold(
@@ -48,17 +48,6 @@ class HomePage extends StatelessWidget {
                  Expanded(
                    child: _buildList(state, context),
                  ),
-                 // Container(
-                 //   height: 150,
-                 //   color: Colors.black87,
-                 //   child: ValueListenableBuilder<String>(
-                 //     valueListenable: GlobalDebug.log,
-                 //     builder: (ctx, val, _) => SingleChildScrollView(
-                 //       reverse: true,
-                 //       child: Text(val, style: const TextStyle(color: Colors.greenAccent, fontSize: 10)),
-                 //     ),
-                 //   )
-                 // )
                ]
             );
           },
@@ -67,16 +56,17 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  void _showIncomingCallDialog(BuildContext context, CallRemoteUser request) {
+  void _showIncomingCallDialog(BuildContext context, CallRemoteUser request, String resolvedCallerName) {
     final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
-         return AlertDialog(
-            title: Text(l10n.incomingChatRequestTitle),
-            content: Text(l10n.incomingCallFrom.replaceAll('{nickname}', request.localNickname).replaceAll('{userid}', request.senderUid)),
-            actions: [
+          final callerName = resolvedCallerName.isNotEmpty ? resolvedCallerName : request.localNickname;
+          return AlertDialog(
+             title: Text(l10n.incomingChatRequestTitle),
+             content: Text(l10n.incomingCallFrom(callerName, request.senderUid)),
+             actions: [
                TextButton(
                   onPressed: () {
                      Navigator.of(ctx).pop(); // Close dialog
@@ -111,31 +101,89 @@ class HomePage extends StatelessWidget {
               itemCount: state.users.length,
               itemBuilder: (context, index) {
                 final user = state.users[index];
-                return ListTile(
-                  // leading: CircleAvatar(
-                  //   child: Text(user.nickname.substring(0, 1).toUpperCase()),
-                  // ),
-                  title: Text(user.nickname),
-                  trailing: const Icon(Icons.chat),
-                  onTap: () {
-                     // Check existing chat?
-                     context.read<ChatBloc>().add(
-                        ChatStarted(
-                           recipientUid: user.userid, 
-                           recipientNickname: user.nickname
-                        )
-                     );
-                     
-                     // Navigate immediately? Or wait for connection?
-                     // Wait for connection (handled by listener up top).
-                     // But we show a loading indicator?
-                     
-                     // For now, push immediately so we see the chat screen waiting.
-                     // context.push('/chat', extra: {
-                     //   'uid': user.userid,
-                     //   'nick': user.nickname,
-                     // });
-                  },
+                
+                return BlocBuilder<ChatBloc, ChatState>(
+                  builder: (context, chatState) {
+                    Widget trailingWidget;
+                    
+                    print('HomePage UI: User ${user.nickname}, outgoingRequestUid=${chatState.outgoingRequestUid}, status=${chatState.outgoingRequestStatus}');
+                    
+                    if (chatState.outgoingRequestUid == user.userid) {
+                       final l10n = AppLocalizations.of(context)!;
+                       switch (chatState.outgoingRequestStatus) {
+                          case OutgoingRequestStatus.pending:
+                            trailingWidget = Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(l10n.chatRequestPending, style: const TextStyle(color: Colors.grey)),
+                                IconButton(
+                                  icon: const Icon(Icons.close, color: Colors.grey),
+                                  tooltip: l10n.cancelButtonText,
+                                  onPressed: () => context.read<ChatBloc>().add(CancelOutgoingRequest()),
+                                )
+                              ],
+                            );
+                            break;
+                          case OutgoingRequestStatus.rejected:
+                            trailingWidget = Text(l10n.chatRequestDeclined, style: const TextStyle(color: Colors.red));
+                            break;
+                          case OutgoingRequestStatus.busy:
+                            // Check Agent: Show only for Browser/SmartPhone.
+                            // The protocol expects strings like "Browser", "Desktop", "Android", "Web"
+                            final agentStr = user.agent?.toString() ?? '';
+                            if (agentStr.contains('Browser') || agentStr.contains('Android') || agentStr.contains('iOS') || agentStr.contains('SmartPhone') || agentStr.contains('Web')) {
+                                trailingWidget = Text(l10n.chatRequestBusy, style: const TextStyle(color: Colors.orange));
+                            } else {
+                                trailingWidget = const SizedBox.shrink(); // Fallback if agent doesn't support busy indicator in this way
+                            }
+                            break;
+                          default:
+                            trailingWidget = IconButton(
+                               icon: const Icon(Icons.chat),
+                               onPressed: () {
+                                  context.read<ChatBloc>().add(
+                                     ChatStarted(
+                                        recipientUid: user.userid, 
+                                        recipientNickname: user.nickname
+                                     )
+                                  );
+                               }
+                            );
+                       }
+                    } else {
+                        trailingWidget = IconButton(
+                           icon: const Icon(Icons.chat),
+                           onPressed: () {
+                              context.read<ChatBloc>().add(
+                                 ChatStarted(
+                                    recipientUid: user.userid, 
+                                    recipientNickname: user.nickname
+                                 )
+                              );
+                           }
+                        );
+                    }
+
+                    return ListTile(
+                      title: Text(user.nickname),
+                      trailing: trailingWidget,
+                      onTap: () {
+                         if (chatState.outgoingRequestUid == user.userid && 
+                            (chatState.outgoingRequestStatus == OutgoingRequestStatus.pending || 
+                             chatState.outgoingRequestStatus == OutgoingRequestStatus.busy)) {
+                            // Do nothing if already pending or busy
+                            return;
+                         }
+                         
+                         context.read<ChatBloc>().add(
+                            ChatStarted(
+                               recipientUid: user.userid, 
+                               recipientNickname: user.nickname
+                            )
+                         );
+                      },
+                    );
+                  }
                 );
               },
             );

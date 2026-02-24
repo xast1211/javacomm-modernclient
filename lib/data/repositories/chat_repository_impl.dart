@@ -158,8 +158,8 @@ class ChatRepositoryImpl implements ChatRepository {
        if (message.header == Header.REQUEST) {
          print('Repository: Incoming Call Request');
          _privateChatRequestController.add(message);
-       } else if (message.header == Header.CONFIRM || message.header == Header.RESPONSE) {
-          print('Repository: Received Call Response/Confirm (Local=${message.localSessionId}, Remote=${message.remoteSessionId})');
+       } else if (message.header == Header.CONFIRM || message.header == Header.RESPONSE || message.header == Header.ERROR) {
+          print('Repository: Received Call Response/Confirm/Error (Local=${message.localSessionId}, Remote=${message.remoteSessionId})');
           _callPrivateChatResponseController.add(message);
        }
     } else if (message is LeavePrivateChat) {
