@@ -147,33 +147,56 @@ class MyApp extends StatelessWidget {
              )..loadSavedLanguage(),
           ),
         ],
-        child: BlocBuilder<ThemeCubit, ThemeState>(
-          builder: (context, themeState) {
-            return BlocBuilder<LanguageCubit, Locale>(
-              builder: (context, locale) {
-                return MaterialApp.router(
-                  title: 'Javacomm Client',
-                  debugShowCheckedModeBanner: false,
-                  theme: themeState.themeData,
-                  locale: locale, // Dynamic Locale
-                  localizationsDelegates: const [
-                    AppLocalizations.delegate,
-                    GlobalMaterialLocalizations.delegate,
-                    GlobalWidgetsLocalizations.delegate,
-                    GlobalCupertinoLocalizations.delegate,
-                  ],
-                  supportedLocales: const [
-                    Locale('de'), // German (Default)
-                    Locale('en'), // English
-                    Locale('es'), // Spanish
-                  ],
-                  routerConfig: _createRouter(context),
-                );
-              },
+        child: const AppRouterView(),
+      ),
+    );
+  }
+}
+
+class AppRouterView extends StatefulWidget {
+  const AppRouterView({super.key});
+
+  @override
+  State<AppRouterView> createState() => _AppRouterViewState();
+}
+
+class _AppRouterViewState extends State<AppRouterView> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize GoRouter once in initState
+    _router = _createRouter(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ThemeCubit, ThemeState>(
+      builder: (context, themeState) {
+        return BlocBuilder<LanguageCubit, Locale>(
+          builder: (context, locale) {
+            return MaterialApp.router(
+              title: 'Javacomm Client',
+              debugShowCheckedModeBanner: false,
+              theme: themeState.themeData,
+              locale: locale, // Dynamic Locale
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: const [
+                Locale('de'), // German (Default)
+                Locale('en'), // English
+                Locale('es'), // Spanish
+              ],
+              routerConfig: _router, // Pass the persisted router instance
             );
           },
-        ),
-      ),
+        );
+      },
     );
   }
 }
